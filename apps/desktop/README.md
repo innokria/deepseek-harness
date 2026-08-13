@@ -97,10 +97,10 @@ Electron resources (packaged)
 
 ## Self-contained runtime
 
-A packaged app does not rely on a `PATH` `dsh`. `prepare:runtime` stages two bundles under `vendor/`:
+A packaged app does not rely on a `PATH` `dsh`. `prepare:runtime` stages two bundles under `vendor/` and prunes what the packaged app never loads:
 
-- `vendor/runtime/<platform>-<arch>/` — a portable Node `v22.19.0` binary per target (macOS arm64/x64, Windows x64), downloaded from nodejs.org.
-- `vendor/harness/` — the `@deepseek-ai/dsh` closure produced by `pnpm deploy`, with `lib/bin.js` as the entry.
+- `vendor/runtime/<platform>-<arch>/` — one portable Node `v22.19.0` binary for the build host's architecture (macOS arm64 or x64, Windows x64), downloaded from nodejs.org with its `include/` headers dropped.
+- `vendor/harness/` — the `@deepseek-ai/dsh` closure produced by `pnpm deploy`, with `lib/bin.js` as the entry, foreign-platform `node-pty` prebuilds removed, and `@mistralai/mistralai` source trees dropped.
 
 electron-builder copies both into `resources/` via `extraResources`. At launch the shell prefers the bundled Node + `dsh` bin and falls back to `DSH_DESKTOP_DSH_BIN`, then the repository's built CLI, when the bundle is absent (development).
 
@@ -120,6 +120,7 @@ A tag-triggered workflow ([desktop-release.yml](../../.github/workflows/desktop-
 | `DSH_DESKTOP_PORT` | `0` | `dsh web --port` value; `0` lets the OS pick a free port. |
 | `DSH_DESKTOP_LOG_DIR` | platform log dir | Directory for the child's combined `harness.log`. |
 | `DSH_DESKTOP_NODE_VERSION` | `v22.19.0` | Node version `prepare:runtime` downloads. |
+| `DSH_DESKTOP_ARCH` | `process.arch` | Architecture of the Node runtime `prepare:runtime` stages; overrides the host arch for a cross-build. |
 
 The child's stdout/stderr go to `harness.log`; the readiness line (`dsh web: http://127.0.0.1:<port>`) is what the supervisor waits for.
 

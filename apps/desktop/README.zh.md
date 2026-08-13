@@ -97,10 +97,10 @@ Electron resources (packaged)
 
 ## 自包含运行时
 
-打包后的应用不依赖 `PATH` 上的 `dsh`。`prepare:runtime` 在 `vendor/` 下暂存两个捆绑包：
+打包后的应用不依赖 `PATH` 上的 `dsh`。`prepare:runtime` 在 `vendor/` 下暂存两个捆绑包，并裁剪打包应用从不加载的内容：
 
-- `vendor/runtime/<platform>-<arch>/`——每个目标一个可移植的 Node `v22.19.0` 二进制（macOS arm64/x64、Windows x64），从 nodejs.org 下载。
-- `vendor/harness/`——由 `pnpm deploy` 产出的 `@deepseek-ai/dsh` 闭包，以 `lib/bin.js` 为入口。
+- `vendor/runtime/<platform>-<arch>/`——一个匹配构建宿主机架构的可移植 Node `v22.19.0` 二进制（macOS arm64 或 x64、Windows x64），从 nodejs.org 下载，并移除 `include/` 头文件。
+- `vendor/harness/`——由 `pnpm deploy` 产出的 `@deepseek-ai/dsh` 闭包，以 `lib/bin.js` 为入口，并移除其他平台的 `node-pty` 预编译二进制与 `@mistralai/mistralai` 源码树。
 
 electron-builder 通过 `extraResources` 把两者复制进 `resources/`。启动时这个壳优先使用捆绑的 Node + `dsh` 二进制，仅在捆绑包缺失（开发场景）时才依次回退到 `DSH_DESKTOP_DSH_BIN`、仓库已构建的 CLI。
 
@@ -120,6 +120,7 @@ electron-builder 通过 `extraResources` 把两者复制进 `resources/`。启�
 | `DSH_DESKTOP_PORT` | `0` | `dsh web --port` 的值；`0` 让操作系统挑选空闲端口。 |
 | `DSH_DESKTOP_LOG_DIR` | 平台日志目录 | 子进程合并的 `harness.log` 所在目录。 |
 | `DSH_DESKTOP_NODE_VERSION` | `v22.19.0` | `prepare:runtime` 下载的 Node 版本。 |
+| `DSH_DESKTOP_ARCH` | `process.arch` | `prepare:runtime` 暂存的 Node 运行时架构；跨架构构建时覆盖宿主机架构。 |
 
 子进程的 stdout/stderr 写入 `harness.log`；就绪行（`dsh web: http://127.0.0.1:<port>`）正是监督器所等待的内容。
 

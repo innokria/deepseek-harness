@@ -20,7 +20,7 @@ Status: implemented
 
 electron-builder.yml 设置了带架构后缀的 `artifactName`，让发布页上的 macOS 与 Windows 安装包一目了然。它还钉死了 macOS 的 `identity`（不带证书类型前缀）并启用 `notarize: true`，同时设 `npmRebuild: false`（壳进程内没有原生依赖）；工作流把 `.p12` 导入临时钥匙串，并借助仓库 secret 里的 App Store Connect API key 通过 `notarytool` 公证。
 
-`prepare-runtime` 统一用 `tar -xf` 解压每个归档（bsdtar 既能读 tarball 也能读 zip，无需 `unzip`），把 Windows 下载名改为 `win` 而非 `win32`，只暂存宿主平台的运行时，并在 Windows 上用 shell 启动 `pnpm` 使 `pnpm.cmd` 得以运行。
+`prepare-runtime` 统一用 `tar -xf` 解压每个归档（bsdtar 既能读 tarball 也能读 zip，无需 `unzip`），把 Windows 下载名改为 `win` 而非 `win32`，只暂存宿主架构的单一 Node 运行时并[裁剪闭包](2026-08-14-prune-desktop-runtime-bundle.md)，并在 Windows 上用 shell 启动 `pnpm` 使 `pnpm.cmd` 得以运行。
 
 macOS 安装包已签名并公证；Windows 安装包在加入 Authenticode 证书之前仍为未签名，自动更新源亦被延后。
 

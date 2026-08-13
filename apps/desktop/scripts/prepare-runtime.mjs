@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 /**
- * Stage the desktop app's self-contained runtime: download per-platform Node
- * binaries and deploy the harness closure. Runs at build/CI time (needs
- * network and a built workspace); the app falls back to a PATH `dsh` when the
- * staged bundle is absent.
+ * Stage the desktop app's self-contained runtime: download the target
+ * platform's Node binary, deploy the harness closure, and prune artifacts the
+ * packaged app never loads (foreign-platform binaries, source trees). Runs at
+ * build/CI time (needs network and a built workspace); the app falls back to a
+ * PATH `dsh` when the staged bundle is absent.
  *
  * Prerequisite: build the repo first (`pnpm run build`), so the deployed
  * `@deepseek-ai/dsh` carries its `lib/` artifacts.
  */
 import { spawnSync } from 'node:child_process'
-import { createWriteStream, mkdirSync, renameSync, rmSync } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { pipeline } from 'node:stream/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -19,18 +20,16 @@ const VENDOR_DIR = join(APP_DIR, 'vendor')
 const NODE_VERSION = process.env.DSH_DESKTOP_NODE_VERSION ?? 'v22.19.0'
 
 /**
- * The runtimes staged for this host. An installer only bundles the runtime its
- * own platform needs: the macOS job stages both architectures (it cross-builds
- * an x64 dmg), the Windows job stages Windows x64. Staging the macOS runtimes
- * on Windows would copy their symlinked `bin/` entries into the NSIS archive,
- * which 7za rejects.
+ * The single runtime staged for this installer. Each build job runs on a
+ * runner whose architecture matches the installer it produces (macOS arm64,
+ * Windows x64), so the host arch is the target arch and exactly one Node
+ * runtime is bundled. `DSH_DESKTOP_ARCH` overrides it for a cross-build.
+ * Staging a macOS runtime on Windows would copy its symlinked `bin/` entries
+ * into the NSIS archive, which 7za rejects.
  */
 const TARGETS = process.platform === 'win32'
   ? [{ platform: 'win32', arch: 'x64' }]
-  : [
-      { platform: 'darwin', arch: 'arm64' },
-      { platform: 'darwin', arch: 'x64' },
-    ]
+  : [{ platform: 'darwin', arch: process.env.DSH_DESKTOP_ARCH ?? process.arch }]
 
 /** Node's distribution filename names Windows `win`, not `win32`. */
 function distPlatform(platform) {
@@ -71,6 +70,9 @@ function extractNode(target, archive) {
   const flat = join(runtimeDir, `${target.platform}-${target.arch}`)
   rmSync(flat, { recursive: true, force: true })
   renameSync(join(runtimeDir, distName(target)), flat)
+  // The C/C++ headers under include/ only exist for compiling native addons;
+  // the bundled runtime never compiles, so they are dead weight.
+  rmSync(join(flat, 'include'), { recursive: true, force: true })
   rmSync(archive, { force: true })
 }
 
@@ -86,6 +88,69 @@ function deployHarness() {
   ])
 }
 
+/**
+ * Return every `node_modules/<scope>/<name>` directory nested under `root`.
+ * `pnpm deploy` hoists the closure, but a transitive dependency that declares
+ * a conflicting version stays nested under its dependent (for example
+ * `@mistralai/mistralai` under `@earendil-works/pi-ai`), so a single top-level
+ * path would miss it.
+ */
+function findNested(root, scope, name) {
+  const found = []
+  const visit = (dir, depth) => {
+    if (depth > 4) return
+    const modules = join(dir, 'node_modules')
+    if (!existsSync(modules)) return
+    const scoped = join(modules, scope)
+    if (existsSync(scoped)) {
+      for (const entry of readdirSync(scoped)) {
+        const candidate = join(scoped, entry)
+        if (entry === name && statSync(candidate).isDirectory()) found.push(candidate)
+      }
+    }
+    for (const entry of readdirSync(modules)) {
+      if (entry === '.bin') continue
+      const child = join(modules, entry)
+      if (!statSync(child).isDirectory()) continue
+      if (entry.startsWith('@')) {
+        // A scoped directory (`@scope/`) holds packages one level deeper; the
+        // nested dependency we seek can sit under any of them.
+        for (const sub of readdirSync(child)) {
+          const pkg = join(child, sub)
+          if (statSync(pkg).isDirectory()) visit(pkg, depth + 1)
+        }
+      } else {
+        visit(child, depth + 1)
+      }
+    }
+  }
+  visit(root, 0)
+  return found
+}
+
+/**
+ * Remove artifacts the deployed closure ships regardless of target but the
+ * packaged app never loads:
+ * - node-pty bundles prebuilds for every platform in one tarball; only the
+ *   `${platform}-${arch}` directory for the staged target is ever required.
+ * - `@mistralai/mistralai` publishes its whole source tree; only the compiled
+ *   `esm/` entry its `default` export points at is imported at runtime.
+ */
+function pruneHarness(harnessDir, target) {
+  const keep = `${target.platform}-${target.arch}`
+  const prebuilds = join(harnessDir, 'node_modules', 'node-pty', 'prebuilds')
+  if (existsSync(prebuilds)) {
+    for (const entry of readdirSync(prebuilds)) {
+      if (entry !== keep) rmSync(join(prebuilds, entry), { recursive: true, force: true })
+    }
+  }
+  for (const mistralaiDir of findNested(harnessDir, '@mistralai', 'mistralai')) {
+    for (const sub of ['src', 'examples', 'tests', 'packages']) {
+      rmSync(join(mistralaiDir, sub), { recursive: true, force: true })
+    }
+  }
+}
+
 for (const target of TARGETS) {
   try {
     const archive = await fetchNode(target)
@@ -98,6 +163,7 @@ for (const target of TARGETS) {
 
 try {
   deployHarness()
+  pruneHarness(join(VENDOR_DIR, 'harness'), TARGETS[0])
   console.log('prepare-runtime: staged harness closure')
 } catch (error) {
   console.error(`prepare-runtime: harness deploy failed: ${error.message}`)

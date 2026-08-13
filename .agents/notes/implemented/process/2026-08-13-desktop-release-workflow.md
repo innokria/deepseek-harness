@@ -20,7 +20,7 @@ Two platform facts shaped the workflow. First, the desktop app is a member of th
 
 electron-builder.yml sets an arch-suffixed `artifactName`, so the macOS and Windows installers are unambiguous on the release page. It also pins the macOS `identity` (without the cert-type prefix) and `notarize: true`, and sets `npmRebuild: false` because the shell has no in-process native dependencies; the workflow imports the `.p12` into a scratch keychain and notarizes with `notarytool` using an App Store Connect API key from repository secrets.
 
-`prepare-runtime` extracts every archive with `tar -xf` (bsdtar reads both tarballs and zip archives, so no `unzip` dependency), names the Windows download `win` rather than `win32`, stages only the host platform's runtimes, and spawns `pnpm` under a shell on Windows so `pnpm.cmd` runs.
+`prepare-runtime` extracts every archive with `tar -xf` (bsdtar reads both tarballs and zip archives, so no `unzip` dependency), names the Windows download `win` rather than `win32`, stages only the host arch's single Node runtime and [prunes the closure](2026-08-14-prune-desktop-runtime-bundle.md), and spawns `pnpm` under a shell on Windows so `pnpm.cmd` runs.
 
 The macOS installer is signed and notarized; the Windows installer stays unsigned until an Authenticode certificate is added, and the auto-update feed stays deferred.
 
