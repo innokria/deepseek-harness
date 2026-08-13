@@ -3,8 +3,9 @@
  * Stage the desktop app's self-contained runtime: download the target
  * platform's Node binary, deploy the harness closure, and prune artifacts the
  * packaged app never loads (foreign-platform binaries, source trees). Runs at
- * build/CI time (needs network and a built workspace); the app falls back to a
- * PATH `dsh` when the staged bundle is absent.
+ * build/CI time (needs network and a built workspace); the app falls back to
+ * `DSH_DESKTOP_DSH_BIN`, then the repository's built CLI, when the staged
+ * bundle is absent.
  *
  * Prerequisite: build the repo first (`pnpm run build`), so the deployed
  * `@deepseek-ai/dsh` carries its `lib/` artifacts.
