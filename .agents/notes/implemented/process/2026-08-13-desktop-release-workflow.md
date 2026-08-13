@@ -1,0 +1,42 @@
+# Agent Note: tag-triggered desktop release workflow for the Electron installers
+
+Status: implemented
+
+English | [中文](2026-08-13-desktop-release-workflow.zh.md)
+
+## Problem
+
+The [Electron desktop shell](../../proposed/feature/2026-08-13-electron-desktop-client.md) shipped with `electron-builder` packaging (`dist:mac` → a `.dmg`, `dist:win` → an NSIS installer) but no CI: its README listed "a dedicated packaging/CI job is a follow-up". A desktop release therefore had to be built on a developer machine and uploaded by hand, and no tag could reproduce a release's installers.
+
+Two platform facts shaped the workflow. First, the desktop app is a member of the `dsh` release family ([npm release sequences](2026-08-10-npm-release-sequences.md)): it shares that family's single version and the `dsh-v*` tag, so a desktop release reuses the same tag rather than minting a second version line. Second, `prepare-runtime` extracted the Windows Node zip with `unzip`, a binary that does not exist on Windows runners, so a Windows CI build could not stage the self-contained runtime it was packaging.
+
+## Decision
+
+`.github/workflows/desktop-release.yml` builds the installers on two hosted runners and publishes them as a GitHub Release:
+
+- **macOS** (`macos-14`): `dist:mac` stages the self-contained runtime and builds the host-arch (arm64) `.dmg`; a second `electron-builder --mac --x64` call reuses that staged runtime to build the x64 `.dmg`.
+- **Windows** (`windows-2025`): `dist:win` builds the x64 NSIS installer under native `pwsh`.
+- **Release** (`ubuntu-latest`): a `dsh-v*` tag push, or a manual dispatch with `publish: true` from such a tag, attaches both installers to a GitHub Release titled `DeepSeek Harness Desktop <version>` via `gh release create`.
+
+electron-builder.yml sets an arch-suffixed `artifactName`, so the two macOS `.dmg`s and the Windows installer are unambiguous on the release page.
+
+`prepare-runtime` now extracts every archive with `tar -xf`. bsdtar — the `tar` on macOS and Windows — reads both tarballs and zip archives, so the `unzip` dependency that Windows runners lacked is gone.
+
+The release publishes unsigned installers: code signing, notarization, and the update feed stay deferred.
+
+## Alternatives considered
+
+**`softprops/action-gh-release` for the release step.** Rejected in favor of `gh release create`: the CLI is already on hosted Ubuntu runners and needs no new third-party action, and release creation is a single command rather than a maintained dependency.
+
+**Cross-build the Windows installer on the macOS runner.** Rejected: electron-builder runs the generated NSIS installer under wine on non-Windows hosts to extract the uninstaller, so a macOS build would still require wine; a native Windows runner avoids it.
+
+**Install `unzip` on the Windows runner via Chocolatey instead of changing `prepare-runtime`.** Rejected: it papers over a latent cross-platform bug in the script and adds a slow, flaky install step; using `tar -xf` fixes the script for every machine that packages the app.
+
+**A shared build job whose artifacts feed both platform jobs.** Rejected for the first version: packaging needs the repo built (`pnpm run build`) before `prepare-runtime` can deploy the harness closure, and sharing the whole built workspace as an artifact is more moving parts than two parallel native builds.
+
+## Consequences
+
+- **A desktop release is reproducible from a tag.** Pushing `dsh-v0.1.0-rc.5` yields both macOS `.dmg`s and the Windows installer attached to a GitHub Release, with no developer machine in the loop.
+- **Each platform job runs a full repo build.** This is slower than one shared build, but it keeps packaging native per platform and matches how `prepare-runtime` deploys the harness closure from a built workspace.
+- **`prepare-runtime` now assumes bsdtar.** Linux is not a packaged target, so GNU tar's missing zip support is out of scope; the change also makes a local `dist:win` on Windows stage the runtime correctly.
+- **The release is unsigned until signing lands.** Users downloading the installers still see macOS Gatekeeper and Windows SmartScreen warnings, which is the known, deferred state rather than a regression.

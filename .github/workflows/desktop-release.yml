@@ -1,0 +1,150 @@
+# Build and publish the Electron desktop app installers: a macOS .dmg per
+# architecture (arm64/x64) and a Windows x64 NSIS installer. A tag push to
+# dsh-v* (the desktop app shares the dsh family's version and tag) creates a
+# GitHub Release with the installers; a manual dispatch can rehearse the build
+# with publish=false or publish from such a tag.
+#
+# Code signing, notarization, and the auto-update feed stay out of scope for
+# now: the release publishes unsigned installers.
+name: Release (Desktop)
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Create a GitHub Release from the built installers. Only valid from a dsh-v* tag.
+        required: true
+        type: boolean
+        default: false
+  push:
+    tags: ['dsh-v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  # Pack runs per ref so a manual rehearse never displaces a tag push; the
+  # release job below is the only step that writes and it targets one tag.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PRIMARY_NODE_VERSION: '24'
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  build-macos:
+    name: macOS (arm64 + x64 dmg)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.PRIMARY_NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install (immutable)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace
+        run: pnpm run build
+
+      # dist:mac stages the self-contained runtime (both macOS Node runtimes +
+      # the deployed harness) and builds the host-arch dmg; the second call
+      # reuses that staged runtime to build the other architecture.
+      - name: Package macOS (arm64)
+        run: pnpm --filter @deepseek-ai/dsh-desktop run dist:mac
+
+      - name: Package macOS (x64)
+        run: pnpm --filter @deepseek-ai/dsh-desktop exec electron-builder --mac --x64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos
+          path: apps/desktop/release/*.dmg
+          if-no-files-found: error
+          retention-days: 7
+
+  build-windows:
+    name: Windows (x64 NSIS)
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.PRIMARY_NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install (immutable)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace
+        run: pnpm run build
+
+      - name: Package Windows
+        run: pnpm --filter @deepseek-ai/dsh-desktop run dist:win
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows
+          path: apps/desktop/release/*.exe
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Create GitHub Release
+    needs: [build-macos, build-windows]
+    if: github.event_name == 'push' || inputs.publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: dist
+
+      - name: Verify release tag
+        run: |
+          case "$GITHUB_REF" in
+            refs/tags/dsh-v*) ;;
+            *) echo "::error::release requires a dsh-v* tag, got ${GITHUB_REF}"; exit 1 ;;
+          esac
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          version="${GITHUB_REF#refs/tags/dsh-v}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/* --clobber
+          else
+            gh release create "$tag" \
+              --title "DeepSeek Harness Desktop ${version}" \
+              --generate-notes \
+              dist/*
+          fi

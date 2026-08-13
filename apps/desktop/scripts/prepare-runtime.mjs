@@ -50,9 +50,10 @@ async function fetchNode(target) {
 function extractNode(target, archive) {
   const runtimeDir = join(VENDOR_DIR, 'runtime')
   mkdirSync(runtimeDir, { recursive: true })
-  run(target.platform === 'win32' ? 'unzip' : 'tar', target.platform === 'win32'
-    ? ['-q', archive, '-d', runtimeDir]
-    : ['-xzf', archive, '-C', runtimeDir])
+  // bsdtar — the `tar` on macOS and Windows — reads both tarballs and zip
+  // archives, so one extractor covers every shipped target without the
+  // `unzip` binary that Windows runners do not provide.
+  run('tar', ['-xf', archive, '-C', runtimeDir])
   const flat = join(runtimeDir, `${target.platform}-${target.arch}`)
   rmSync(flat, { recursive: true, force: true })
   renameSync(join(runtimeDir, distName(target)), flat)

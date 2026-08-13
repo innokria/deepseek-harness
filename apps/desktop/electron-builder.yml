@@ -1,5 +1,8 @@
 appId: com.deepseek.dsh-desktop
 productName: DeepSeek Harness
+# Always suffix the architecture so the two macOS installers (arm64/x64) and the
+# Windows installer are unambiguous on a release page.
+artifactName: ${productName}-${version}-${arch}.${ext}
 directories:
   output: release
 files:
