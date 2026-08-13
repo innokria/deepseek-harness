@@ -22,7 +22,7 @@ mac:
   # The Developer ID Application identity signs the distribution build; the
   # same identity is notarized via `notarytool` (credentials come from the
   # release workflow's environment).
-  identity: "Developer ID Application: Junwei Zhang (7HP3X3977Y)"
+  identity: "Junwei Zhang (7HP3X3977Y)"
   notarize: true
   target:
     - dmg

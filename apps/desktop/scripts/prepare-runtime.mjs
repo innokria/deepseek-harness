@@ -18,19 +18,33 @@ const APP_DIR = join(dirname(fileURLToPath(import.meta.url)), '..')
 const VENDOR_DIR = join(APP_DIR, 'vendor')
 const NODE_VERSION = process.env.DSH_DESKTOP_NODE_VERSION ?? 'v22.19.0'
 
-/** The shipped target matrix: macOS arm64/x64 and Windows x64. */
-const TARGETS = [
-  { platform: 'darwin', arch: 'arm64' },
-  { platform: 'darwin', arch: 'x64' },
-  { platform: 'win32', arch: 'x64' },
-]
+/**
+ * The runtimes staged for this host. An installer only bundles the runtime its
+ * own platform needs: the macOS job stages both architectures (it cross-builds
+ * an x64 dmg), the Windows job stages Windows x64. Staging the macOS runtimes
+ * on Windows would copy their symlinked `bin/` entries into the NSIS archive,
+ * which 7za rejects.
+ */
+const TARGETS = process.platform === 'win32'
+  ? [{ platform: 'win32', arch: 'x64' }]
+  : [
+      { platform: 'darwin', arch: 'arm64' },
+      { platform: 'darwin', arch: 'x64' },
+    ]
+
+/** Node's distribution filename names Windows `win`, not `win32`. */
+function distPlatform(platform) {
+  return platform === 'win32' ? 'win' : platform
+}
 
 function distName(target) {
-  return `node-${NODE_VERSION}-${target.platform}-${target.arch}`
+  return `node-${NODE_VERSION}-${distPlatform(target.platform)}-${target.arch}`
 }
 
 function run(command, args) {
-  const result = spawnSync(command, args, { stdio: 'inherit' })
+  // Windows resolves `pnpm` to `pnpm.cmd`, which CreateProcess cannot run
+  // without a shell; `tar` and the other commands are unaffected by shell:true.
+  const result = spawnSync(command, args, { stdio: 'inherit', shell: process.platform === 'win32' })
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} exited ${String(result.status)}`)
 }
 
