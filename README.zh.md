@@ -14,7 +14,7 @@ DeepSeek Harness 目前处于 _开发者预览_ 阶段，正在快速迭代。**
 
 ### 桌面客户端
 
-更喜欢可安装的桌面应用？从 [Releases](https://github.com/salathleizhang/deepseek-harness-desktop/releases) 页下载 macOS 或 Windows 安装包。它内置 Node 运行时与 harness，并承载同一个 Web UI。安装包尚未代码签名、未公证，macOS Gatekeeper 与 Windows SmartScreen 首次打开时会提示。详见 [apps/desktop/README.md](apps/desktop/README.md)。
+更喜欢可安装的桌面应用？从 [Releases](https://github.com/salathleizhang/deepseek-harness-desktop/releases) 页下载 macOS 或 Windows 安装包。它内置 Node 运行时与 harness，并承载同一个 Web UI。macOS 安装包已代码签名并公证；Windows 安装包尚未签名，因此 Windows SmartScreen 首次打开时会提示。详见 [apps/desktop/README.md](apps/desktop/README.md)。
 
 ### 通过 `npm` 运行
 

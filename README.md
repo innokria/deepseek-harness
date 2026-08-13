@@ -14,7 +14,7 @@ DeepSeek Harness is currently in _developer preview_ and is iterating rapidly. *
 
 ### Desktop
 
-Prefer an installable app? Download the macOS or Windows installer from the [Releases](https://github.com/salathleizhang/deepseek-harness-desktop/releases) page. It bundles a Node runtime and the harness and hosts the same Web UI. Installers are not code-signed or notarized, so macOS Gatekeeper and Windows SmartScreen warn on first open. See [apps/desktop/README.md](apps/desktop/README.md).
+Prefer an installable app? Download the macOS or Windows installer from the [Releases](https://github.com/salathleizhang/deepseek-harness-desktop/releases) page. It bundles a Node runtime and the harness and hosts the same Web UI. The macOS installer is code-signed and notarized; the Windows installer is unsigned, so Windows SmartScreen warns on first open. See [apps/desktop/README.md](apps/desktop/README.md).
 
 ### Run from `npm`
 
