@@ -39,7 +39,7 @@ pnpm --filter @deepseek-ai/dsh-desktop dist:win # Windows NSIS installer
 
 ## 发布
 
-一个由 tag 触发的 GitHub Actions 工作流（`.github/workflows/desktop-release.yml`）负责构建并发布安装包。推送一个 `dsh-v*` tag——桌面应用与 dsh 族共享版本与 tag——工作流就会构建 macOS 各架构（arm64/x64）的 `.dmg` 与 Windows x64 的 NSIS 安装包，并把两者作为附件挂到一个标题为 `DeepSeek Harness Desktop <version>` 的 GitHub Release 上。以 `publish: false` 手动触发可只排练构建而不创建 Release。macOS 安装包使用 Developer ID Application 身份签名并已公证；Windows 安装包在加入 Authenticode 证书之前仍为未签名。
+一个由 tag 触发的 GitHub Actions 工作流（`.github/workflows/desktop-release.yml`）负责构建并发布安装包。推送一个 `dsh-v*` tag——桌面应用与 dsh 族共享版本与 tag——工作流就会构建 macOS arm64 的 `.dmg` 与 Windows x64 的 NSIS 安装包，并把两者作为附件挂到一个标题为 `DeepSeek Harness Desktop <version>` 的 GitHub Release 上。以 `publish: false` 手动触发可只排练构建而不创建 Release。macOS 安装包使用 Developer ID Application 身份签名并已公证；Windows 安装包在加入 Authenticode 证书之前仍为未签名。macOS x64 安装包要等 harness 的原生依赖完成 x64 构建后再补上。
 
 ## 环境变量
 

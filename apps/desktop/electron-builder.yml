@@ -15,6 +15,11 @@ extraResources:
   - from: vendor/harness
     to: harness
 asar: true
+# The shell has no in-process native dependencies — the harness runs as a
+# child process on its bundled Node — so skip electron-builder's dependency
+# rebuild (which would otherwise re-run `pnpm install --production` and trip
+# the workspace's postinstall).
+npmRebuild: false
 mac:
   icon: build/icon.png
   category: public.app-category.developer-tools

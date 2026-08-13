@@ -39,7 +39,7 @@ pnpm --filter @deepseek-ai/dsh-desktop dist:win # Windows NSIS installer
 
 ## Release
 
-A tag-triggered GitHub Actions workflow (`.github/workflows/desktop-release.yml`) builds and publishes the installers. Push a `dsh-v*` tag — the desktop app shares the dsh family's version and tag — and the workflow builds a macOS `.dmg` per architecture (arm64/x64) and a Windows x64 NSIS installer, then attaches both to a GitHub Release titled `DeepSeek Harness Desktop <version>`. A manual dispatch with `publish: false` rehearses the build without creating a release. The macOS installers are signed with a Developer ID Application identity and notarized; the Windows installer is unsigned until an Authenticode certificate is added.
+A tag-triggered GitHub Actions workflow (`.github/workflows/desktop-release.yml`) builds and publishes the installers. Push a `dsh-v*` tag — the desktop app shares the dsh family's version and tag — and the workflow builds a macOS arm64 `.dmg` and a Windows x64 NSIS installer, then attaches both to a GitHub Release titled `DeepSeek Harness Desktop <version>`. A manual dispatch with `publish: false` rehearses the build without creating a release. The macOS installer is signed with a Developer ID Application identity and notarized; the Windows installer is unsigned until an Authenticode certificate is added. A macOS x64 installer is deferred until the harness's native dependencies are built for x64.
 
 ## Environment
 

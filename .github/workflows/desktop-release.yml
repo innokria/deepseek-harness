@@ -1,5 +1,5 @@
-# Build and publish the Electron desktop app installers: a macOS .dmg per
-# architecture (arm64/x64) and a Windows x64 NSIS installer. A tag push to
+# Build and publish the Electron desktop app installers: a macOS arm64 .dmg and
+# a Windows x64 NSIS installer. A tag push to
 # dsh-v* (the desktop app shares the dsh family's version and tag) creates a
 # GitHub Release with the installers; a manual dispatch can rehearse the build
 # with publish=false or publish from such a tag.
@@ -36,7 +36,7 @@ env:
 
 jobs:
   build-macos:
-    name: macOS (arm64 + x64 dmg)
+    name: macOS (arm64 dmg)
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v6
@@ -95,14 +95,10 @@ jobs:
             echo "Notarization credentials not set; the macOS installer will be signed but not notarized."
           fi
 
-      # dist:mac stages the self-contained runtime (both macOS Node runtimes +
-      # the deployed harness) and builds the host-arch dmg; the second call
-      # reuses that staged runtime to build the other architecture.
-      - name: Package macOS (arm64)
+      # dist:mac stages the self-contained runtime (macOS Node runtime + the
+      # deployed harness) and builds the host-arch (arm64) dmg.
+      - name: Package macOS
         run: pnpm --filter @deepseek-ai/dsh-desktop run dist:mac
-
-      - name: Package macOS (x64)
-        run: pnpm --filter @deepseek-ai/dsh-desktop exec electron-builder --mac --x64
 
       - uses: actions/upload-artifact@v4
         with:
