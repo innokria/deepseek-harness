@@ -12,6 +12,10 @@ DeepSeek Harness is currently in _developer preview_ and is iterating rapidly. *
 
 ## Run
 
+### Desktop
+
+Prefer an installable app? Download the macOS or Windows installer from the [Releases](https://github.com/salathleizhang/deepseek-harness-desktop/releases) page. It bundles a Node runtime and the harness and hosts the same Web UI. Installers are not code-signed or notarized, so macOS Gatekeeper and Windows SmartScreen warn on first open. See [apps/desktop/README.md](apps/desktop/README.md).
+
 ### Run from `npm`
 
 Install `Node.js`, then run:
@@ -27,8 +31,8 @@ The command starts the Web UI, served at `http://127.0.0.1:3080` by default. See
 To run from a repository checkout:
 
 ```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
-cd deepseek-harness
+git clone https://github.com/salathleizhang/deepseek-harness-desktop.git
+cd deepseek-harness-desktop
 pnpm install
 pnpm run build
 pnpm dsh web

@@ -18,11 +18,11 @@ Two platform facts shaped the workflow. First, the desktop app is a member of th
 - **Windows** (`windows-2025`): `dist:win` builds the x64 NSIS installer under native `pwsh`.
 - **Release** (`ubuntu-latest`): a `dsh-v*` tag push, or a manual dispatch with `publish: true` from such a tag, attaches both installers to a GitHub Release titled `DeepSeek Harness Desktop <version>` via `gh release create`.
 
-electron-builder.yml sets an arch-suffixed `artifactName`, so the two macOS `.dmg`s and the Windows installer are unambiguous on the release page.
+electron-builder.yml sets an arch-suffixed `artifactName`, so the two macOS `.dmg`s and the Windows installer are unambiguous on the release page. It also pins the macOS `identity` (Developer ID Application) and `notarize: true`; the workflow imports the `.p12` into a scratch keychain and notarizes with `notarytool` using an App Store Connect API key from repository secrets.
 
 `prepare-runtime` now extracts every archive with `tar -xf`. bsdtar — the `tar` on macOS and Windows — reads both tarballs and zip archives, so the `unzip` dependency that Windows runners lacked is gone.
 
-The release publishes unsigned installers: code signing, notarization, and the update feed stay deferred.
+The macOS installers are signed and notarized; the Windows installer stays unsigned until an Authenticode certificate is added, and the auto-update feed stays deferred.
 
 ## Alternatives considered
 
@@ -39,4 +39,4 @@ The release publishes unsigned installers: code signing, notarization, and the u
 - **A desktop release is reproducible from a tag.** Pushing `dsh-v0.1.0-rc.5` yields both macOS `.dmg`s and the Windows installer attached to a GitHub Release, with no developer machine in the loop.
 - **Each platform job runs a full repo build.** This is slower than one shared build, but it keeps packaging native per platform and matches how `prepare-runtime` deploys the harness closure from a built workspace.
 - **`prepare-runtime` now assumes bsdtar.** Linux is not a packaged target, so GNU tar's missing zip support is out of scope; the change also makes a local `dist:win` on Windows stage the runtime correctly.
-- **The release is unsigned until signing lands.** Users downloading the installers still see macOS Gatekeeper and Windows SmartScreen warnings, which is the known, deferred state rather than a regression.
+- **Only macOS is signed and notarized.** Windows users still see the SmartScreen warning until an Authenticode certificate is added, and signing on both platforms is a prerequisite for shipping the auto-update feed.

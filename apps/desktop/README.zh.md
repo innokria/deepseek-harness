@@ -39,7 +39,7 @@ pnpm --filter @deepseek-ai/dsh-desktop dist:win # Windows NSIS installer
 
 ## 发布
 
-一个由 tag 触发的 GitHub Actions 工作流（`.github/workflows/desktop-release.yml`）负责构建并发布安装包。推送一个 `dsh-v*` tag——桌面应用与 dsh 族共享版本与 tag——工作流就会构建 macOS 各架构（arm64/x64）的 `.dmg` 与 Windows x64 的 NSIS 安装包，并把两者作为附件挂到一个标题为 `DeepSeek Harness Desktop <version>` 的 GitHub Release 上。以 `publish: false` 手动触发可只排练构建而不创建 Release。代码签名与公证尚未纳入发布流程。
+一个由 tag 触发的 GitHub Actions 工作流（`.github/workflows/desktop-release.yml`）负责构建并发布安装包。推送一个 `dsh-v*` tag——桌面应用与 dsh 族共享版本与 tag——工作流就会构建 macOS 各架构（arm64/x64）的 `.dmg` 与 Windows x64 的 NSIS 安装包，并把两者作为附件挂到一个标题为 `DeepSeek Harness Desktop <version>` 的 GitHub Release 上。以 `publish: false` 手动触发可只排练构建而不创建 Release。macOS 安装包使用 Developer ID Application 身份签名并已公证；Windows 安装包在加入 Authenticode 证书之前仍为未签名。
 
 ## 环境变量
 
@@ -60,4 +60,4 @@ pnpm --filter @deepseek-ai/dsh-desktop dist:win # Windows NSIS installer
 
 - `pnpm deploy` 闭包必须包含前端 dist（`@deepseek-ai/dsh-web-frontend/dist`）；目前靠真实安装验证，尚未由门禁断言。
 - 托盘、原生通知、登录自启与自动更新尚未实现；深链转发已端到端接通。
-- 代码签名、公证与更新源尚未配置，因此发布工作流产出的是未签名安装包。
+- macOS 安装包已签名并公证；Windows 安装包仍为未签名（尚无 Authenticode 证书），自动更新源亦未配置。

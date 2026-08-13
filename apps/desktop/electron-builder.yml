@@ -19,6 +19,11 @@ mac:
   icon: build/icon.png
   category: public.app-category.developer-tools
   hardenedRuntime: true
+  # The Developer ID Application identity signs the distribution build; the
+  # same identity is notarized via `notarytool` (credentials come from the
+  # release workflow's environment).
+  identity: "Developer ID Application: Junwei Zhang (7HP3X3977Y)"
+  notarize: true
   target:
     - dmg
 win:

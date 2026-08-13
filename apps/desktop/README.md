@@ -39,7 +39,7 @@ pnpm --filter @deepseek-ai/dsh-desktop dist:win # Windows NSIS installer
 
 ## Release
 
-A tag-triggered GitHub Actions workflow (`.github/workflows/desktop-release.yml`) builds and publishes the installers. Push a `dsh-v*` tag — the desktop app shares the dsh family's version and tag — and the workflow builds a macOS `.dmg` per architecture (arm64/x64) and a Windows x64 NSIS installer, then attaches both to a GitHub Release titled `DeepSeek Harness Desktop <version>`. A manual dispatch with `publish: false` rehearses the build without creating a release. Code signing and notarization are not yet part of the release.
+A tag-triggered GitHub Actions workflow (`.github/workflows/desktop-release.yml`) builds and publishes the installers. Push a `dsh-v*` tag — the desktop app shares the dsh family's version and tag — and the workflow builds a macOS `.dmg` per architecture (arm64/x64) and a Windows x64 NSIS installer, then attaches both to a GitHub Release titled `DeepSeek Harness Desktop <version>`. A manual dispatch with `publish: false` rehearses the build without creating a release. The macOS installers are signed with a Developer ID Application identity and notarized; the Windows installer is unsigned until an Authenticode certificate is added.
 
 ## Environment
 
@@ -60,4 +60,4 @@ The child's stdout/stderr go to `harness.log`; the readiness line (`dsh web: htt
 
 - The `pnpm deploy` closure must include the frontend dist (`@deepseek-ai/dsh-web-frontend/dist`); this is verified against a real install, not yet asserted by a gate.
 - Tray, native notifications, launch-at-login, and auto-update are unimplemented; deep-link forwarding is wired end to end.
-- Code signing, notarization, and the update feed are not configured, so the release workflow publishes unsigned installers.
+- The macOS installers are signed and notarized; the Windows installer is unsigned (no Authenticode certificate yet) and the auto-update feed is not configured.

@@ -18,11 +18,11 @@ Status: implemented
 - **Windows**（`windows-2025`）：`dist:win` 在原生 `pwsh` 下构建 x64 NSIS 安装包。
 - **Release**（`ubuntu-latest`）：由 `dsh-v*` tag 推送触发，或在该 tag 上以 `publish: true` 手动触发，通过 `gh release create` 把两个安装包挂到标题为 `DeepSeek Harness Desktop <version>` 的 GitHub Release。
 
-electron-builder.yml 设置了带架构后缀的 `artifactName`，让发布页上的两个 macOS `.dmg` 与 Windows 安装包一目了然。
+electron-builder.yml 设置了带架构后缀的 `artifactName`，让发布页上的两个 macOS `.dmg` 与 Windows 安装包一目了然。它还钉死了 macOS 的 `identity`（Developer ID Application）并启用 `notarize: true`；工作流把 `.p12` 导入临时钥匙串，并借助仓库 secret 里的 App Store Connect API key 通过 `notarytool` 公证。
 
 `prepare-runtime` 现在统一用 `tar -xf` 解压每个归档。bsdtar——macOS 与 Windows 上的 `tar`——既能读 tarball 也能读 zip 归档，因此 Windows runner 缺少的 `unzip` 依赖不复存在。
 
-发布产出的是未签名安装包：代码签名、公证与更新源仍被延后。
+macOS 安装包已签名并公证；Windows 安装包在加入 Authenticode 证书之前仍为未签名，自动更新源亦被延后。
 
 ## Alternatives considered
 
@@ -39,4 +39,4 @@ electron-builder.yml 设置了带架构后缀的 `artifactName`，让发布页�
 - **桌面发布可由 tag 复现。** 推送 `dsh-v0.1.0-rc.5` 即可得到两个 macOS `.dmg` 与 Windows 安装包，并挂到 GitHub Release，全程不需要开发机。
 - **每个平台作业都要跑一次完整仓库构建。** 这比一次共享构建慢，但能让打包按平台原生进行，也与 `prepare-runtime` 从已构建工作区部署 harness 闭包的方式一致。
 - **`prepare-runtime` 现在假定 bsdtar。** Linux 不是打包目标，所以 GNU tar 缺少 zip 支持不在范围之内；这一改动也让 Windows 上的本地 `dist:win` 能正确暂存运行时。
-- **在签名落地之前，发布是未签名的。** 下载安装包的用户仍会看到 macOS Gatekeeper 与 Windows SmartScreen 的警告，这是已知的、被延后的状态，而非回归。
+- **只有 macOS 已签名并公证。** 在加入 Authenticode 证书之前，Windows 用户仍会看到 SmartScreen 警告；两个平台都完成签名也是上线自动更新源的前置条件。
