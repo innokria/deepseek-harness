@@ -1,0 +1,25 @@
+appId: com.deepseek.dsh-desktop
+productName: DeepSeek Harness
+directories:
+  output: release
+files:
+  - lib/**
+  - preload.cjs
+  - package.json
+extraResources:
+  - from: vendor/runtime
+    to: runtime
+  - from: vendor/harness
+    to: harness
+asar: true
+mac:
+  category: public.app-category.developer-tools
+  hardenedRuntime: true
+  target:
+    - dmg
+win:
+  target:
+    - nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
