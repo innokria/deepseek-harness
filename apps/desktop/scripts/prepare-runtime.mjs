@@ -11,13 +11,15 @@
  * `@deepseek-ai/dsh` carries its `lib/` artifacts.
  */
 import { spawnSync } from 'node:child_process'
-import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
+import { cpSync, createWriteStream, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync } from 'node:fs'
 import { pipeline } from 'node:stream/promises'
-import { dirname, join } from 'node:path'
+import { dirname, join, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const APP_DIR = join(dirname(fileURLToPath(import.meta.url)), '..')
 const VENDOR_DIR = join(APP_DIR, 'vendor')
+/** Workspace node_modules of the deploy root (`@deepseek-ai/dsh`, apps/cli). */
+const CLI_NODE_MODULES = join(APP_DIR, '..', 'cli', 'node_modules')
 const NODE_VERSION = process.env.DSH_DESKTOP_NODE_VERSION ?? 'v22.19.0'
 
 /**
@@ -152,6 +154,81 @@ function pruneHarness(harnessDir, target) {
   }
 }
 
+/**
+ * Restore direct dependencies that `pnpm deploy --legacy` hoists beside the
+ * deploy source instead of materializing in the target (bundle and shell
+ * packages such as `@deepseek-ai/dsh-base` and `@deepseek-ai/dsh-web-app`).
+ * Each missing dependency is copied from the deploy root's workspace
+ * `node_modules`, dereferenced, with its package-local `node_modules` omitted to
+ * keep one flat Cordis instance. Mirrors `build-exe-for-python-sdk.ts`.
+ */
+function restoreLegacyHoists(harnessDir) {
+  const manifest = JSON.parse(readFileSync(join(harnessDir, 'package.json'), 'utf8'))
+  const restored = []
+  for (const dependency of Object.keys(manifest.dependencies ?? {}).sort()) {
+    const destination = join(harnessDir, 'node_modules', dependency)
+    if (existsSync(destination)) continue
+    const source = join(CLI_NODE_MODULES, dependency)
+    if (!existsSync(source)) {
+      throw new Error(`prepare-runtime: deployed dependency ${dependency} is absent from both ${destination} and ${source}.`)
+    }
+    mkdirSync(dirname(destination), { recursive: true })
+    const nestedNodeModules = join(source, 'node_modules')
+    cpSync(source, destination, {
+      recursive: true,
+      dereference: true,
+      filter: (path) => path !== nestedNodeModules && !path.startsWith(nestedNodeModules + sep),
+    })
+    restored.push(dependency)
+  }
+  if (restored.length > 0) {
+    console.log(`prepare-runtime: restored legacy deploy hoists: ${restored.join(', ')}`)
+  }
+}
+
+/**
+ * `pnpm deploy --legacy` materializes `link:`-overridden workspace packages
+ * (`@deepseek-ai/cosmokit`, `@deepseek-ai/schemastery`) as symlinks back to the
+ * checkout. A packaged app has no such checkout, so replace every symlink under
+ * the deployed closure with a dereferenced file copy and drop the `.bin` shims
+ * the child never executes. Mirrors `build-exe-for-python-sdk.ts`.
+ */
+function materializeStagedLinks(harnessDir) {
+  const nodeModules = join(harnessDir, 'node_modules')
+  for (;;) {
+    const link = findSymlink(nodeModules)
+    if (link === undefined) break
+    const segments = link.slice(nodeModules.length + 1).split(sep)
+    const binIndex = segments.lastIndexOf('.bin')
+    if (binIndex >= 0) {
+      rmSync(join(nodeModules, ...segments.slice(0, binIndex + 1)), { recursive: true, force: true })
+      continue
+    }
+    const source = realpathSync(link)
+    const nestedNodeModules = join(source, 'node_modules')
+    rmSync(link, { recursive: true, force: true })
+    cpSync(source, link, {
+      recursive: true,
+      dereference: true,
+      filter: (path) => path !== nestedNodeModules && !path.startsWith(nestedNodeModules + sep),
+    })
+  }
+}
+
+/** Return the first symbolic link below a directory, if one exists. */
+function findSymlink(directory) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name)
+    const metadata = lstatSync(path)
+    if (metadata.isSymbolicLink()) return path
+    if (metadata.isDirectory()) {
+      const nested = findSymlink(path)
+      if (nested !== undefined) return nested
+    }
+  }
+  return undefined
+}
+
 for (const target of TARGETS) {
   try {
     const archive = await fetchNode(target)
@@ -164,6 +241,8 @@ for (const target of TARGETS) {
 
 try {
   deployHarness()
+  restoreLegacyHoists(join(VENDOR_DIR, 'harness'))
+  materializeStagedLinks(join(VENDOR_DIR, 'harness'))
   pruneHarness(join(VENDOR_DIR, 'harness'), TARGETS[0])
   console.log('prepare-runtime: staged harness closure')
 } catch (error) {
