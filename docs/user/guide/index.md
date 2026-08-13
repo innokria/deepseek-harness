@@ -2,7 +2,7 @@
 
 English | [中文](index.zh.md)
 
-Start the Web UI through the [root README](../../../README.md#run): install the desktop app, or run the `dsh web` command, which prints its URL. This guide begins after that server is running. The `dsh` process uses its invoking directory as the default filesystem location, but a fresh Web UI has no selected workspace until you add one.
+Start the Web UI through the [root README](../../../README.md#download): install the desktop app, or run the `dsh web` command, which prints its URL. This guide begins after that server is running. The `dsh` process uses its invoking directory as the default filesystem location, but a fresh Web UI has no selected workspace until you add one.
 
 ## Configure a model
 
