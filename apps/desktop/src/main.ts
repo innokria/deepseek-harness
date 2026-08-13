@@ -1,4 +1,5 @@
 import { app, BrowserWindow, shell } from 'electron'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { HarnessSupervisor } from './harness.ts'
 import { resolveDesktopEnv } from './env.ts'
@@ -23,12 +24,26 @@ let supervisorStopped = false
 let quitting = false
 let pendingDeepLink: string | null = null
 
+/**
+ * The square DeepSeek icon shipped under `build/` (electron-builder's build
+ * resource dir). Packaged builds already get their icon from electron-builder
+ * (the `.icns`/`.ico` it derives), so this is only present in development
+ * where `electron .` would otherwise fall back to the stock Electron glyph.
+ * @returns the icon path when the repo's `build/icon.png` exists, else undefined.
+ */
+function resolveDevIcon(): string | undefined {
+  const candidate = join(app.getAppPath(), 'build', 'icon.png')
+  return existsSync(candidate) ? candidate : undefined
+}
+
 function createWindow(): BrowserWindow {
+  const devIcon = resolveDevIcon()
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
     show: false,
     title: 'DeepSeek Harness',
+    ...(devIcon === undefined ? {} : { icon: devIcon }),
     webPreferences: {
       preload: join(app.getAppPath(), 'preload.cjs'),
       contextIsolation: true,
@@ -86,12 +101,19 @@ if (!hasLock) {
       mainWindow.show()
       mainWindow.focus()
     }
-    const link = argv.find((arg) => arg.startsWith(DEEP_LINK_PREFIX))
+    const link = argv.find(arg => arg.startsWith(DEEP_LINK_PREFIX))
     if (link !== undefined) deliverDeepLink(link)
   })
 }
 
 void app.whenReady().then(() => {
+  // macOS dock shows the Electron glyph until the app is packaged; mirror the
+  // build icon during development only (the packaged bundle's `.icns` is set
+  // by electron-builder and needs no runtime override).
+  if (process.platform === 'darwin') {
+    const devIcon = resolveDevIcon()
+    if (devIcon !== undefined) app.dock?.setIcon(devIcon)
+  }
   const resourceRoot = app.isPackaged ? process.resourcesPath : app.getAppPath()
   const env = resolveDesktopEnv(resourceRoot)
   const sup = new HarnessSupervisor(env.launch.command, env.launch.args, {

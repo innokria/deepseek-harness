@@ -13,11 +13,13 @@ extraResources:
     to: harness
 asar: true
 mac:
+  icon: build/icon.png
   category: public.app-category.developer-tools
   hardenedRuntime: true
   target:
     - dmg
 win:
+  icon: build/icon.png
   target:
     - nsis
 nsis:
