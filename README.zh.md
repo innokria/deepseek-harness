@@ -26,12 +26,14 @@
 
 ## 下载
 
-安装包发布在 [Releases](https://github.com/salathleizhang/deepseek-harness-desktop/releases) 页，文件名携带 dsh 版本（`DeepSeek Harness-<version>-<arch>`）。
+安装包使用固定文件名，因此这些一键链接始终指向最新版本：
 
 | 平台 | 安装包 | 下载 |
 | --- | --- | --- |
-| macOS Apple Silicon | DMG 安装包（arm64） | [Releases](https://github.com/salathleizhang/deepseek-harness-desktop/releases) |
-| Windows x64 | NSIS 安装包 | [Releases](https://github.com/salathleizhang/deepseek-harness-desktop/releases) |
+| macOS Apple Silicon | DMG 安装包（arm64） | [DeepSeek.Harness-arm64.dmg](https://github.com/salathleizhang/deepseek-harness-desktop/releases/latest/download/DeepSeek.Harness-arm64.dmg) |
+| Windows x64 | NSIS 安装包 | [DeepSeek.Harness-x64.exe](https://github.com/salathleizhang/deepseek-harness-desktop/releases/latest/download/DeepSeek.Harness-x64.exe) |
+
+完整版本历史见 [Releases](https://github.com/salathleizhang/deepseek-harness-desktop/releases) 页。
 
 macOS Intel（x64）要等 harness 的原生依赖完成 x64 构建后再补上；不支持 Windows ARM64。
 

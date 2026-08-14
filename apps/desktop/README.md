@@ -27,12 +27,14 @@ The shell is a thin layer: it spawns `dsh web`, waits for the readiness line, op
 
 ## Download
 
-Installers are published on the [Releases](https://github.com/salathleizhang/deepseek-harness-desktop/releases) page with the dsh version in the filename (`DeepSeek Harness-<version>-<arch>`).
+Installers use fixed filenames, so these one-click links always fetch the latest release:
 
 | Platform | Package | Download |
 | --- | --- | --- |
-| macOS Apple Silicon | DMG installer (arm64) | [Releases](https://github.com/salathleizhang/deepseek-harness-desktop/releases) |
-| Windows x64 | NSIS installer | [Releases](https://github.com/salathleizhang/deepseek-harness-desktop/releases) |
+| macOS Apple Silicon | DMG installer (arm64) | [DeepSeek.Harness-arm64.dmg](https://github.com/salathleizhang/deepseek-harness-desktop/releases/latest/download/DeepSeek.Harness-arm64.dmg) |
+| Windows x64 | NSIS installer | [DeepSeek.Harness-x64.exe](https://github.com/salathleizhang/deepseek-harness-desktop/releases/latest/download/DeepSeek.Harness-x64.exe) |
+
+The [Releases](https://github.com/salathleizhang/deepseek-harness-desktop/releases) page keeps the full version history.
 
 macOS Intel (x64) is deferred until the harness's native dependencies are built for x64; Windows ARM64 is not supported.
 

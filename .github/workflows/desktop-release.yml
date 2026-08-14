@@ -6,8 +6,10 @@
 #
 # The macOS job signs with the Developer ID Application identity and notarizes
 # via notarytool (credentials come from repository secrets); the Windows job
-# stays unsigned until an Authenticode certificate is added. The auto-update
-# feed stays out of scope for now.
+# stays unsigned until an Authenticode certificate is added. The installers use
+# fixed, version-free filenames (set in electron-builder.yml), so the
+# releases/latest/download/<name> links in the READMEs always resolve to the
+# newest release; an in-app electron-updater feed stays out of scope for now.
 name: Release (Desktop)
 
 on:
