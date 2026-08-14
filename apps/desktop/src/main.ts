@@ -2,6 +2,7 @@ import {
   app,
   BrowserWindow,
   dialog,
+  ipcMain,
   Menu,
   nativeImage,
   session,
@@ -32,14 +33,46 @@ const CONNECTING_HTML = `<!doctype html>
 </style>
 <p>正在启动 DeepSeek Harness…</p>`
 
-/** Frameless Windows has no caption; empty chrome drags, controls do not. */
+/**
+ * Frameless Windows: only the skin titlebar drags. Body-wide drag swallowed
+ * clicks on decorative caption glyphs (– □ ×) and turned them into maximize.
+ */
 const WINDOW_DRAG_CSS = `
-body { -webkit-app-region: drag; }
+body { -webkit-app-region: no-drag; }
+[data-skin-chrome="titlebar"] { -webkit-app-region: drag; }
+/* Skin caption glyphs are trailing <span>s, not <button>s. */
+[data-skin-chrome="titlebar"] > span:nth-last-child(-n+3) {
+  -webkit-app-region: no-drag;
+  cursor: pointer;
+}
 button, a, input, textarea, select, [role="button"], [role="textbox"],
 [role="menuitem"], [contenteditable="true"], canvas, iframe, video {
   -webkit-app-region: no-drag;
 }
 `
+
+/** Wire skin titlebar – / □ / × to the desktop shell after the skin mounts. */
+const WIRE_SKIN_CAPTION_JS = `(() => {
+  const api = window.dshDesktop;
+  if (!api || typeof api.minimize !== 'function') return;
+  const wire = (titlebar) => {
+    if (!titlebar || titlebar.dataset.dshCaptionWired === '1') return;
+    const buttons = Array.from(titlebar.querySelectorAll(':scope > span')).slice(-3);
+    if (buttons.length < 3) return;
+    const [minBtn, maxBtn, closeBtn] = buttons;
+    const stop = (event) => { event.preventDefault(); event.stopPropagation(); };
+    minBtn.addEventListener('click', (event) => { stop(event); void api.minimize(); });
+    maxBtn.addEventListener('click', (event) => { stop(event); void api.maximize(); });
+    closeBtn.addEventListener('click', (event) => { stop(event); void api.close(); });
+    titlebar.dataset.dshCaptionWired = '1';
+  };
+  const scan = () => {
+    document.querySelectorAll('[data-skin-chrome="titlebar"]').forEach(wire);
+  };
+  scan();
+  const observer = new MutationObserver(scan);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+})()`
 
 let mainWindow: BrowserWindow | null = null
 let supervisor: HarnessSupervisor | null = null
@@ -155,6 +188,7 @@ function createWindow(): BrowserWindow {
   win.webContents.on('did-finish-load', () => {
     if (process.platform === 'win32' && !win.isDestroyed()) {
       void win.webContents.insertCSS(WINDOW_DRAG_CSS)
+      void win.webContents.executeJavaScript(WIRE_SKIN_CAPTION_JS, true)
     }
     if (pendingDeepLink !== null && !win.isDestroyed()) {
       win.webContents.send('dsh:deep-link', pendingDeepLink)
@@ -162,6 +196,25 @@ function createWindow(): BrowserWindow {
     }
   })
   return win
+}
+
+function windowFromEvent(event: Electron.IpcMainInvokeEvent): BrowserWindow | null {
+  return BrowserWindow.fromWebContents(event.sender)
+}
+
+function registerWindowControlIpc(): void {
+  ipcMain.handle('dsh:window-minimize', (event) => {
+    windowFromEvent(event)?.minimize()
+  })
+  ipcMain.handle('dsh:window-maximize', (event) => {
+    const win = windowFromEvent(event)
+    if (win === null || win.isDestroyed()) return
+    if (win.isMaximized()) win.unmaximize()
+    else win.maximize()
+  })
+  ipcMain.handle('dsh:window-close', (event) => {
+    windowFromEvent(event)?.close()
+  })
 }
 
 /** Load the harness origin, or the connecting page when it is not ready yet. */
@@ -225,6 +278,7 @@ async function boot(): Promise<void> {
     const devIcon = resolveDevIcon()
     if (devIcon !== undefined) app.dock?.setIcon(devIcon)
   }
+  registerWindowControlIpc()
   const resourceRoot = app.isPackaged ? process.resourcesPath : app.getAppPath()
   const env = resolveDesktopEnv(resourceRoot)
   const sup = new HarnessSupervisor(env.launch.command, env.launch.args, {
