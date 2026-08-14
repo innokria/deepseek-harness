@@ -28,9 +28,18 @@ const CONNECTING_HTML = `<!doctype html>
 <style>
   body { margin: 0; display: grid; place-items: center; height: 100vh;
          font: 14px/1.5 system-ui, -apple-system, sans-serif; color: #9aa0a6;
-         background: #1f2328; }
+         background: #1f2328; -webkit-app-region: drag; }
 </style>
 <p>正在启动 DeepSeek Harness…</p>`
+
+/** Frameless Windows has no caption; empty chrome drags, controls do not. */
+const WINDOW_DRAG_CSS = `
+body { -webkit-app-region: drag; }
+button, a, input, textarea, select, [role="button"], [role="textbox"],
+[role="menuitem"], [contenteditable="true"], canvas, iframe, video {
+  -webkit-app-region: no-drag;
+}
+`
 
 let mainWindow: BrowserWindow | null = null
 let supervisor: HarnessSupervisor | null = null
@@ -94,10 +103,9 @@ function createWindow(): BrowserWindow {
     minHeight: 640,
     show: false,
     autoHideMenuBar: true,
-    // macOS: hidden inset + traffic lights. Windows: keep the native caption
-    // so the window can be dragged. titleBarStyle hidden + titleBarOverlay
-    // ate the drag region and left no -webkit-app-region fallback.
-    frame: true,
+    // Frameless on Windows so skins are not covered by native caption buttons.
+    // macOS still uses hidden-inset traffic lights; Windows gets WINDOW_DRAG_CSS.
+    frame: process.platform !== 'win32',
     ...(process.platform === 'darwin' ? {
       titleBarStyle: 'hiddenInset',
       trafficLightPosition: { x: 16, y: 12 },
@@ -105,12 +113,14 @@ function createWindow(): BrowserWindow {
       visualEffectState: 'followWindow',
       transparent: true,
       backgroundColor: '#00000000',
-    } : {
-      titleBarStyle: 'default',
+    } : process.platform === 'win32' ? {
       backgroundMaterial: 'acrylic',
       hasShadow: true,
       roundedCorners: true,
       thickFrame: true,
+    } : {
+      transparent: true,
+      backgroundColor: '#00000000',
     }),
     title: APP_NAME,
     ...(devIcon === undefined ? {} : { icon: devIcon }),
@@ -143,6 +153,9 @@ function createWindow(): BrowserWindow {
     return { action: 'deny' }
   })
   win.webContents.on('did-finish-load', () => {
+    if (process.platform === 'win32' && !win.isDestroyed()) {
+      void win.webContents.insertCSS(WINDOW_DRAG_CSS)
+    }
     if (pendingDeepLink !== null && !win.isDestroyed()) {
       win.webContents.send('dsh:deep-link', pendingDeepLink)
       pendingDeepLink = null
@@ -157,12 +170,10 @@ function loadWindow(win: BrowserWindow): void {
   if (url === null || url === undefined) {
     void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(CONNECTING_HTML)}`)
   } else {
-    // Native Windows caption already occupies the title-bar strip; only
-    // frameless hosts (macOS) need the Web GUI to reserve overlay space.
+    // Mark the renderer so the Web GUI can reserve title-bar space under
+    // frameless window controls (macOS traffic lights sit over the sidebar).
     const rendererUrl = new URL(url)
-    if (process.platform !== 'win32') {
-      rendererUrl.searchParams.set('dsh-desktop-platform', process.platform)
-    }
+    rendererUrl.searchParams.set('dsh-desktop-platform', process.platform)
     void win.loadURL(rendererUrl.href)
   }
 }
