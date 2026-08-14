@@ -94,26 +94,23 @@ function createWindow(): BrowserWindow {
     minHeight: 640,
     show: false,
     autoHideMenuBar: true,
-    // macOS draws inset traffic lights over a hidden title bar; Windows keeps
-    // its native frame and overlays the caption buttons over it.
-    frame: process.platform === 'win32',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
-    ...(process.platform === 'darwin' ? {} : {
-      titleBarOverlay: { color: '#00000000', symbolColor: '#7f858f', height: 44 },
-    }),
+    // macOS: hidden inset + traffic lights. Windows: keep the native caption
+    // so the window can be dragged. titleBarStyle hidden + titleBarOverlay
+    // ate the drag region and left no -webkit-app-region fallback.
+    frame: true,
     ...(process.platform === 'darwin' ? {
+      titleBarStyle: 'hiddenInset',
       trafficLightPosition: { x: 16, y: 12 },
       vibrancy: 'sidebar',
       visualEffectState: 'followWindow',
-    } : {}),
-    ...(process.platform === 'win32' ? {
+      transparent: true,
+      backgroundColor: '#00000000',
+    } : {
+      titleBarStyle: 'default',
       backgroundMaterial: 'acrylic',
       hasShadow: true,
       roundedCorners: true,
       thickFrame: true,
-    } : {
-      transparent: true,
-      backgroundColor: '#00000000',
     }),
     title: APP_NAME,
     ...(devIcon === undefined ? {} : { icon: devIcon }),
@@ -160,10 +157,12 @@ function loadWindow(win: BrowserWindow): void {
   if (url === null || url === undefined) {
     void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(CONNECTING_HTML)}`)
   } else {
-    // Mark the renderer so the Web GUI reserves title-bar space under the
-    // frameless window controls (macOS traffic lights sit over the sidebar).
+    // Native Windows caption already occupies the title-bar strip; only
+    // frameless hosts (macOS) need the Web GUI to reserve overlay space.
     const rendererUrl = new URL(url)
-    rendererUrl.searchParams.set('dsh-desktop-platform', process.platform)
+    if (process.platform !== 'win32') {
+      rendererUrl.searchParams.set('dsh-desktop-platform', process.platform)
+    }
     void win.loadURL(rendererUrl.href)
   }
 }
