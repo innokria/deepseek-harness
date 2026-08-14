@@ -107,6 +107,19 @@ export abstract class ReleaseFamily {
   }
 
   /**
+   * The members this family publishes to npm. A `private` member still shares
+   * the family version and tag — `bump` advances it and `verifyVersions` holds
+   * it — but it ships outside npm, so it never enters a pack or publish set.
+   * `apps/desktop` is the case: an Electron app distributed as GitHub Release
+   * installers, not an npm package.
+   * @param members - this family's members.
+   * @returns The publishable members.
+   */
+  publishableMembers(members: readonly ReleaseMember[]): ReleaseMember[] {
+    return members.filter(member => member.manifest.private !== true)
+  }
+
+  /**
    * Order members so every package publishes after the family members it depends on.
    * @param members - this family's members.
    * @returns The same members in publish order; ties break by name for determinism.

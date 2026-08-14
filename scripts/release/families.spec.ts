@@ -30,6 +30,14 @@ describe('release families', () => {
     expect(vendor.tagFor({ ...cordis, version: '4.0.0-rc.7' })).toBe('vendor-cordis-v4.0.0-rc.7')
   })
 
+  it('publishes non-private members and keeps a private member for version sharing', () => {
+    const dsh = releaseFamily('dsh')
+    const cli = member('apps/cli', '@deepseek-ai/dsh')
+    const desktop = member('apps/desktop', '@deepseek-ai/dsh-desktop', { private: true })
+
+    expect(dsh.publishableMembers([cli, desktop]).map(entry => entry.name)).toEqual(['@deepseek-ai/dsh'])
+  })
+
   it('rejects a family whose members disagree on the shared version', () => {
     const dsh = releaseFamily('dsh')
     const members = [member('apps/cli', '@deepseek-ai/dsh'), { ...member('apps/web', '@deepseek-ai/dsh-web-frontend'), version: '0.0.2' }]

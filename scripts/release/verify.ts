@@ -12,8 +12,10 @@ import { isEntry } from './process.ts'
 import { releaseFamily, type ReleaseFamily, type ReleaseMember } from './families.ts'
 
 /**
- * Assert every member may be published: npm refuses a `private` package.
- * @param members - the family's members.
+ * Assert the publishable members may be published: `publishableMembers` already
+ * drops `private` members (they ship outside npm), so this guards the filtered
+ * set against a private member slipping back in.
+ * @param members - the family's publishable members.
  */
 function verifyPublishable(members: readonly ReleaseMember[]): void {
   const priv = members.filter(member => member.manifest.private === true)
@@ -58,7 +60,7 @@ function main(): void {
 
   const publishing = process.env.RELEASE_PUBLISH === 'true'
   if (publishing) {
-    verifyPublishable(members)
+    verifyPublishable(family.publishableMembers(members))
     verifyTag(family, members, process.env.GITHUB_REF ?? '')
   }
 
