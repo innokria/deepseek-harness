@@ -40,10 +40,12 @@ const CONNECTING_HTML = `<!doctype html>
 const WINDOW_DRAG_CSS = `
 body { -webkit-app-region: no-drag; }
 [data-skin-chrome="titlebar"] { -webkit-app-region: drag; }
-/* Skin caption glyphs are trailing <span>s, not <button>s. */
-[data-skin-chrome="titlebar"] > span:nth-last-child(-n+3) {
-  -webkit-app-region: no-drag;
+/* Skin caption glyphs are <span class="…TitlebarBtn">, not <button>. */
+[data-skin-chrome="titlebar"] [class*="TitlebarBtn"],
+[data-skin-chrome="titlebar"] [data-dsh-caption] {
+  -webkit-app-region: no-drag !important;
   cursor: pointer;
+  pointer-events: auto !important;
 }
 button, a, input, textarea, select, [role="button"], [role="textbox"],
 [role="menuitem"], [contenteditable="true"], canvas, iframe, video {
@@ -55,15 +57,43 @@ button, a, input, textarea, select, [role="button"], [role="textbox"],
 const WIRE_SKIN_CAPTION_JS = `(() => {
   const api = window.dshDesktop;
   if (!api || typeof api.minimize !== 'function') return;
+  const actionFor = (el) => {
+    const marked = el.getAttribute('data-dsh-caption');
+    if (marked === 'min' || marked === 'max' || marked === 'close') return marked;
+    const text = (el.textContent || '').trim();
+    if (text === '–' || text === '-' || text === '−' || text === '—') return 'min';
+    if (text === '□' || text === '❐' || text === '▢' || text === '🗖') return 'max';
+    if (text === '×' || text === '✕' || text === '✖' || text === 'X' || text === 'x') return 'close';
+    return null;
+  };
+  const run = (action) => {
+    if (action === 'min') void api.minimize();
+    else if (action === 'max') void api.maximize();
+    else if (action === 'close') void api.close();
+  };
   const wire = (titlebar) => {
     if (!titlebar || titlebar.dataset.dshCaptionWired === '1') return;
-    const buttons = Array.from(titlebar.querySelectorAll(':scope > span')).slice(-3);
+    let buttons = Array.from(titlebar.querySelectorAll('[class*="TitlebarBtn"]'));
+    if (buttons.length < 3) {
+      buttons = Array.from(titlebar.querySelectorAll(':scope > span')).slice(-3);
+    }
     if (buttons.length < 3) return;
-    const [minBtn, maxBtn, closeBtn] = buttons;
-    const stop = (event) => { event.preventDefault(); event.stopPropagation(); };
-    minBtn.addEventListener('click', (event) => { stop(event); void api.minimize(); });
-    maxBtn.addEventListener('click', (event) => { stop(event); void api.maximize(); });
-    closeBtn.addEventListener('click', (event) => { stop(event); void api.close(); });
+    const trio = buttons.slice(-3);
+    const actions = ['min', 'max', 'close'];
+    trio.forEach((btn, index) => {
+      const action = actionFor(btn) || actions[index];
+      btn.setAttribute('data-dsh-caption', action);
+      btn.style.webkitAppRegion = 'no-drag';
+      const fire = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        run(action);
+      };
+      // pointerdown beats Electron drag-region click swallowing on caption spans.
+      btn.addEventListener('pointerdown', fire, true);
+      btn.addEventListener('click', fire, true);
+    });
     titlebar.dataset.dshCaptionWired = '1';
   };
   const scan = () => {
@@ -136,6 +166,9 @@ function createWindow(): BrowserWindow {
     minHeight: 640,
     show: false,
     autoHideMenuBar: true,
+    minimizable: true,
+    maximizable: true,
+    closable: true,
     // Frameless on Windows so skins are not covered by native caption buttons.
     // macOS still uses hidden-inset traffic lights; Windows gets WINDOW_DRAG_CSS.
     frame: process.platform !== 'win32',
@@ -204,7 +237,14 @@ function windowFromEvent(event: Electron.IpcMainInvokeEvent): BrowserWindow | nu
 
 function registerWindowControlIpc(): void {
   ipcMain.handle('dsh:window-minimize', (event) => {
-    windowFromEvent(event)?.minimize()
+    const win = windowFromEvent(event)
+    if (win === null || win.isDestroyed()) return
+    // Acrylic / frameless Windows sometimes ignores a synchronous minimize.
+    win.setMinimizable(true)
+    if (win.isMaximized()) win.unmaximize()
+    setImmediate(() => {
+      if (!win.isDestroyed()) win.minimize()
+    })
   })
   ipcMain.handle('dsh:window-maximize', (event) => {
     const win = windowFromEvent(event)
