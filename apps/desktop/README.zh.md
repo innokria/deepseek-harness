@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/deepseek-harness-desktop.png" width="900" alt="DeepSeek Harness desktop window" />
+  <video src="docs/images/deepseek-harness-desktop.mp4" width="900" controls></video>
 </p>
 
 这个壳是一层薄封装：它拉起 `dsh web`，等待就绪行，在所提供的 loopback 源处打开一个 `BrowserWindow`，并负责关停与崩溃重启。渲染层是加载该源的 Chromium，因此 `window.__DSH_BOOT__` 注入与 `/api` 传输和 `dsh web` 下完全一致。没有重新实现任何 UI。

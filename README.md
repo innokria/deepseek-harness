@@ -17,7 +17,7 @@ English | [中文](README.zh.md)
 </p>
 
 <p align="center">
-  <img src="apps/desktop/docs/images/deepseek-harness-desktop.png" width="900" alt="DeepSeek Harness desktop window" />
+  <video src="apps/desktop/docs/images/deepseek-harness-desktop.mp4" width="900" controls></video>
 </p>
 
 The shell is a thin layer: it spawns `dsh web`, waits for the readiness line, opens one `BrowserWindow` at the served loopback origin, and owns shutdown and crash-restart. The renderer is Chromium loading that origin, so `window.__DSH_BOOT__` injection and the `/api` transport behave exactly as under `dsh web`. No UI is reimplemented.
