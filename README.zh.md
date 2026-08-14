@@ -44,6 +44,12 @@ DeepSeek Harness 已经提供完整的 agent 运行时与 Web GUI。这个壳不
 - 捆绑可移植的 Node 运行时与 harness 闭包，使打包后的应用不依赖 `PATH` 上的 `dsh`，升级也不影响用户数据。
 - 用 Electron 的隔离选项加固渲染层。
 
+## 与 DeepSeek Harness 的关系
+
+本壳封装 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)，只贡献上文列出的宿主能力。如需命令行运行 Harness 或参与核心功能开发，请查看官方仓库。
+
+这是基于 DeepSeek Harness 构建的社区项目，并非 DeepSeek 官方产品。
+
 ## 特性
 
 - 直接打开 harness 的 Web GUI，在子进程报告就绪前显示连接中页面。

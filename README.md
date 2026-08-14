@@ -44,6 +44,12 @@ DeepSeek Harness already provides the complete agent runtime and Web GUI. The sh
 - Bundle a portable Node runtime and the harness closure so a packaged app needs no `PATH` `dsh` and upgrades leave user data untouched.
 - Harden the renderer with Electron's isolation options.
 
+## Relationship to DeepSeek Harness
+
+This shell wraps [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) and contributes only the host capabilities listed above. For command-line use of Harness or core feature work, see the official repository.
+
+It is a community project built on DeepSeek Harness, not an official DeepSeek product.
+
 ## Features
 
 - Opens directly into the harness Web GUI, showing a connecting page until the child reports ready.
