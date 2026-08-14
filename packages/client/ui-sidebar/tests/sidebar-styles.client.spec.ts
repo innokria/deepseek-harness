@@ -63,4 +63,8 @@ describe('SidebarRoot.module.css', () => {
     expect(declarations('.collapsed .newSession')?.get('align-self')).toBe('flex-start')
     expect(declarations('.collapsed .newSession')?.get('width')).toBe('36px')
   })
+
+  it('reserves title-bar space under the macOS traffic lights', () => {
+    expect(declarations(":global(html[data-dsh-desktop-platform='darwin']) .root")?.get('padding-top')).toBe('32px')
+  })
 })

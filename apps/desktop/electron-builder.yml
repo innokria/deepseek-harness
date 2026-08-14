@@ -14,6 +14,8 @@ extraResources:
     to: runtime
   - from: vendor/harness
     to: harness
+  - from: resources
+    to: desktop-resources
 asar: true
 # The shell has no in-process native dependencies — the harness runs as a
 # child process on its bundled Node — so skip electron-builder's dependency

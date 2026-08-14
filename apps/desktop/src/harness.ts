@@ -4,13 +4,96 @@ import { dirname } from 'node:path'
 import { EventEmitter } from 'node:events'
 
 /**
- * The web app prints one `dsh web: http://127.0.0.1:<port>` line once its
- * Loader tree has settled; that line is the documented readiness signal
- * (`packages/bundle/web-app`), so the supervisor treats it as the moment the
- * window may load the origin. Matching the line also gives the real port when
- * the invocation used `--port 0`.
+ * The web app prints one `dsh web: http://127.0.0.1:<port>` line (optionally
+ * followed by ` (LAN: ...)`) once its Loader tree has settled; that line is the
+ * documented readiness signal (`packages/bundle/web-app`), so the supervisor
+ * treats it as the moment the window may load the origin. Matching the line
+ * also gives the real port when the invocation used `--port 0`.
  */
-const READY_LINE = /^dsh web:\s+(https?:\/\/127\.0\.0\.1:\d+)/
+const READINESS_PREFIX = 'dsh web: '
+
+/** Incremental parser for the Web Host's canonical readiness line. */
+export interface ReadinessParser {
+  /**
+   * Consume one stdout chunk.
+   * @param chunk - Text emitted by the Host.
+   * @returns The loopback origin once a complete readiness line is observed.
+   */
+  push(chunk: string): string | undefined
+  /**
+   * Finish the stream and require a readiness line.
+   * @returns The parsed loopback origin.
+   */
+  finalize(): string
+}
+
+/**
+ * Assert and normalize one readiness line to a loopback HTTP origin with an
+ * explicit port. The line may carry a trailing ` (LAN: ...)` candidate, which
+ * is ignored: only the first whitespace-delimited token is the canonical URL.
+ */
+function parseReadinessLine(line: string): string | undefined {
+  if (!line.startsWith(READINESS_PREFIX)) return undefined
+  const token = line.slice(READINESS_PREFIX.length).split(/\s/u, 1)[0]
+  if (token === undefined) throw new Error(`desktop Host readiness line has no URL: ${line}`)
+
+  let url: URL
+  try {
+    url = new URL(token)
+  } catch {
+    throw new Error(`desktop Host readiness URL is invalid: ${token}`)
+  }
+  const port = Number(url.port)
+  if (url.protocol !== 'http:'
+    || (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost')
+    || url.pathname !== '/'
+    || url.search !== ''
+    || url.hash !== ''
+    || !Number.isInteger(port)
+    || port < 1
+    || port > 65_535) {
+    throw new Error(`desktop Host readiness URL must be loopback HTTP with an explicit port: ${token}`)
+  }
+  return url.origin
+}
+
+/**
+ * Create a line parser whose result is stable after readiness.
+ * @returns A fresh incremental parser.
+ */
+export function createReadinessParser(): ReadinessParser {
+  let pending = ''
+  let readyUrl: string | undefined
+
+  const accept = (line: string): string | undefined => {
+    const parsed = parseReadinessLine(line.replace(/\r$/u, ''))
+    if (parsed === undefined) return undefined
+    if (readyUrl !== undefined && parsed !== readyUrl) {
+      throw new Error(`desktop Host emitted conflicting readiness URLs: ${readyUrl} and ${parsed}`)
+    }
+    readyUrl = parsed
+    return readyUrl
+  }
+
+  return {
+    push(chunk) {
+      pending += chunk
+      for (;;) {
+        const newline = pending.indexOf('\n')
+        if (newline === -1) return readyUrl
+        const line = pending.slice(0, newline)
+        pending = pending.slice(newline + 1)
+        const parsed = accept(line)
+        if (parsed !== undefined) return parsed
+      }
+    },
+    finalize() {
+      if (pending !== '') accept(pending)
+      if (readyUrl === undefined) throw new Error('desktop Host exited before emitting its readiness URL')
+      return readyUrl
+    },
+  }
+}
 
 /** A single child exit, as observed by the supervisor. */
 export interface HarnessExit {
@@ -50,7 +133,7 @@ export class HarnessSupervisor extends EventEmitter<HarnessSupervisorEvents> {
   private child: ChildProcess | null = null
   private stopping = false
   private restartAttempt = 0
-  private stdoutTail = ''
+  private parser: ReadinessParser = createReadinessParser()
   private servedUrl: string | null = null
 
   constructor(command: string, args: readonly string[], options: HarnessSupervisorOptions) {
@@ -96,6 +179,7 @@ export class HarnessSupervisor extends EventEmitter<HarnessSupervisorEvents> {
   }
 
   private spawn(): void {
+    this.parser = createReadinessParser()
     this.child = spawn(this.command, [...this.args], { stdio: ['ignore', 'pipe', 'pipe'] })
     this.child.stdout?.setEncoding('utf8')
     this.child.stderr?.setEncoding('utf8')
@@ -110,21 +194,23 @@ export class HarnessSupervisor extends EventEmitter<HarnessSupervisorEvents> {
   }
 
   private onStdout(chunk: string): void {
-    this.stdoutTail += chunk
-    const lines = this.stdoutTail.split('\n')
-    this.stdoutTail = lines.pop() ?? ''
-    for (const line of lines) {
-      this.logStream.write(`${line}\n`)
-      const match = READY_LINE.exec(line)
-      if (match === null) continue
-      this.servedUrl = match[1] ?? null
-      this.restartAttempt = 0
-      if (this.servedUrl !== null) this.emit('ready', this.servedUrl)
+    this.logStream.write(chunk)
+    let url: string | undefined
+    try {
+      url = this.parser.push(chunk)
+    } catch (error) {
+      this.logStream.write(`[readiness error] ${error instanceof Error ? error.message : String(error)}\n`)
+      return
     }
+    if (url === undefined || this.servedUrl !== null) return
+    this.servedUrl = url
+    this.restartAttempt = 0
+    this.emit('ready', url)
   }
 
   private onExit(code: number | null, signal: NodeJS.Signals | null): void {
     this.child = null
+    this.servedUrl = null
     this.emit('exit', { code, signal, expected: this.stopping })
     if (!this.stopping) this.scheduleRestart()
   }

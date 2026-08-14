@@ -1,8 +1,22 @@
-import { app, BrowserWindow, shell } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  Menu,
+  nativeImage,
+  session,
+  shell,
+  Tray,
+  type MenuItemConstructorOptions,
+  type NativeImage,
+} from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { HarnessSupervisor } from './harness.ts'
 import { resolveDesktopEnv } from './env.ts'
+import { createDesktopLifecycle, type DesktopLifecycle } from './window-lifecycle.ts'
+
+const APP_NAME = 'DeepSeek Harness'
 
 /** Deep-link scheme the shell forwards to the renderer untouched. */
 const DEEP_LINK_PREFIX = 'dsh://'
@@ -20,8 +34,9 @@ const CONNECTING_HTML = `<!doctype html>
 
 let mainWindow: BrowserWindow | null = null
 let supervisor: HarnessSupervisor | null = null
-let supervisorStopped = false
-let quitting = false
+let tray: Tray | null = null
+let lifecycle: DesktopLifecycle | null = null
+let quitReleased = false
 let pendingDeepLink: string | null = null
 
 /**
@@ -36,30 +51,98 @@ function resolveDevIcon(): string | undefined {
   return existsSync(candidate) ? candidate : undefined
 }
 
+/** Load the app-local tray template, with an empty fallback for incomplete staging. */
+function trayImage(): NativeImage {
+  const base = app.isPackaged ? process.resourcesPath : app.getAppPath()
+  const dir = app.isPackaged ? join(base, 'desktop-resources') : join(base, 'resources')
+  const path = join(dir, 'trayTemplate.png')
+  const image = existsSync(path) ? nativeImage.createFromPath(path) : nativeImage.createEmpty()
+  if (process.platform === 'darwin') image.setTemplateImage(true)
+  return image
+}
+
+function isExternalUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function hasOrigin(raw: string, expected: string): boolean {
+  try {
+    return new URL(raw).origin === expected
+  } catch {
+    return false
+  }
+}
+
+/** Install navigation and permission policy before the first renderer loads. */
+function hardenSession(): void {
+  const desktopSession = session.defaultSession
+  desktopSession.setPermissionCheckHandler(() => false)
+  desktopSession.setPermissionRequestHandler((_webContents, _permission, callback) => { callback(false) })
+}
+
 function createWindow(): BrowserWindow {
   const devIcon = resolveDevIcon()
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 960,
+    minHeight: 640,
     show: false,
-    title: 'DeepSeek Harness',
+    autoHideMenuBar: true,
+    // macOS draws inset traffic lights over a hidden title bar; Windows keeps
+    // its native frame and overlays the caption buttons over it.
+    frame: process.platform === 'win32',
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    ...(process.platform === 'darwin' ? {} : {
+      titleBarOverlay: { color: '#00000000', symbolColor: '#7f858f', height: 44 },
+    }),
+    ...(process.platform === 'darwin' ? {
+      trafficLightPosition: { x: 16, y: 12 },
+      vibrancy: 'sidebar',
+      visualEffectState: 'followWindow',
+    } : {}),
+    ...(process.platform === 'win32' ? {
+      backgroundMaterial: 'acrylic',
+      hasShadow: true,
+      roundedCorners: true,
+      thickFrame: true,
+    } : {
+      transparent: true,
+      backgroundColor: '#00000000',
+    }),
+    title: APP_NAME,
     ...(devIcon === undefined ? {} : { icon: devIcon }),
     webPreferences: {
       preload: join(app.getAppPath(), 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      webSecurity: true,
     },
   })
   win.once('ready-to-show', () => {
-    if (!quitting) win.show()
+    if (!(lifecycle?.isQuitting ?? false)) win.show()
   })
+  // An ordinary close hides to the tray; the Host stays alive until an
+  // explicit quit disposes it (see window-lifecycle.ts).
+  win.on('close', (event) => { lifecycle?.onWindowClose(event) })
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
   })
+  win.webContents.on('will-navigate', (event, url) => {
+    const origin = supervisor?.url
+    if (origin !== null && origin !== undefined && hasOrigin(url, origin)) return
+    event.preventDefault()
+    if (isExternalUrl(url)) void shell.openExternal(url)
+  })
   // The shell opens no second windows; hand external navigation to the browser.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url)
+    if (isExternalUrl(url)) void shell.openExternal(url)
     return { action: 'deny' }
   })
   win.webContents.on('did-finish-load', () => {
@@ -77,7 +160,11 @@ function loadWindow(win: BrowserWindow): void {
   if (url === null || url === undefined) {
     void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(CONNECTING_HTML)}`)
   } else {
-    void win.loadURL(url)
+    // Mark the renderer so the Web GUI reserves title-bar space under the
+    // frameless window controls (macOS traffic lights sit over the sidebar).
+    const rendererUrl = new URL(url)
+    rendererUrl.searchParams.set('dsh-desktop-platform', process.platform)
+    void win.loadURL(rendererUrl.href)
   }
 }
 
@@ -91,22 +178,36 @@ function deliverDeepLink(url: string): void {
   }
 }
 
-const hasLock = app.requestSingleInstanceLock()
-if (!hasLock) {
+function createTray(): void {
+  tray = new Tray(trayImage())
+  tray.setToolTip(APP_NAME)
+  const template: MenuItemConstructorOptions[] = [
+    { label: 'Open Window', click: () => { void lifecycle?.showWindow() } },
+    { type: 'separator' },
+    { label: 'Quit', click: () => { void requestAppQuit() } },
+  ]
+  tray.setContextMenu(Menu.buildFromTemplate(template))
+  tray.on('click', () => { void lifecycle?.showWindow() })
+}
+
+function releaseAppQuit(): void {
+  quitReleased = true
+  tray?.destroy()
+  tray = null
   app.quit()
-} else {
-  app.on('second-instance', (_event, argv) => {
-    if (mainWindow !== null) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.show()
-      mainWindow.focus()
-    }
-    const link = argv.find(arg => arg.startsWith(DEEP_LINK_PREFIX))
-    if (link !== undefined) deliverDeepLink(link)
+}
+
+/** Join explicit quit requests even while the Host is still starting. */
+function requestAppQuit(): Promise<void> {
+  if (lifecycle !== null) return lifecycle.requestQuit()
+  return (supervisor?.stop() ?? Promise.resolve()).catch((error: unknown) => {
+    console.error('desktop shutdown failed:', error)
+  }).then(() => {
+    releaseAppQuit()
   })
 }
 
-void app.whenReady().then(() => {
+async function boot(): Promise<void> {
   // macOS dock shows the Electron glyph until the app is packaged; mirror the
   // build icon during development only (the packaged bundle's `.icns` is set
   // by electron-builder and needs no runtime override).
@@ -134,36 +235,58 @@ void app.whenReady().then(() => {
     }
   })
   sup.start()
+  hardenSession()
+  lifecycle = createDesktopLifecycle({
+    getWindow: () => mainWindow ?? undefined,
+    createWindow: async () => createWindow(),
+    disposeHost: async () => { await sup.stop() },
+    quit: releaseAppQuit,
+    reportError: (error) => { console.error('desktop shutdown failed:', error) },
+  })
+  createTray()
   mainWindow = createWindow()
   loadWindow(mainWindow)
-})
+}
+
+const hasLock = app.requestSingleInstanceLock()
+if (!hasLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (_event, argv) => {
+    void lifecycle?.showWindow()
+    const link = argv.find(arg => arg.startsWith(DEEP_LINK_PREFIX))
+    if (link !== undefined) deliverDeepLink(link)
+  })
+}
 
 app.on('open-url', (event, url) => {
   event.preventDefault()
   deliverDeepLink(url)
 })
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
-})
-
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    mainWindow = createWindow()
-    loadWindow(mainWindow)
-  }
+  void lifecycle?.showWindow()
 })
 
-app.on('before-quit', () => {
-  quitting = true
+app.on('window-all-closed', () => {
+  // The tray and Host own application lifetime on every platform; the window
+  // is hidden rather than destroyed on close.
 })
 
-app.on('will-quit', (event) => {
-  if (supervisor !== null && !supervisorStopped) {
-    event.preventDefault()
-    void supervisor.stop().finally(() => {
-      supervisorStopped = true
-      app.quit()
-    })
-  }
+app.on('before-quit', (event) => {
+  if (quitReleased) return
+  event.preventDefault()
+  void requestAppQuit()
+})
+
+void app.whenReady().then(boot).catch((error: unknown) => {
+  console.error('desktop startup failed:', error)
+  if (quitReleased) return
+  void dialog.showMessageBox({
+    type: 'error',
+    title: `${APP_NAME} failed to start`,
+    message: error instanceof Error ? error.message : String(error),
+  }).finally(() => {
+    void requestAppQuit()
+  })
 })

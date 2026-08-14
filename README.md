@@ -68,7 +68,7 @@ DeepSeek Harness already provides the complete agent runtime and Web GUI. The sh
 pnpm --filter @deepseek-ai/dsh-desktop dev
 ```
 
-`dev` builds the shell and starts Electron; `build` then `start` runs the two steps separately. The window shows the connecting page until the harness reports ready, then loads the served origin.
+`dev` builds the shell, starts Electron, then watches `src/` and restarts the app whenever the emitted `lib/` settles, so shell edits reload without a manual re-run. `build` then `start` runs the two steps separately. The window shows the connecting page until the harness reports ready, then loads the served origin.
 
 ### Packaging
 

@@ -29,6 +29,13 @@
   padding: 18px 10px 6px;
 }
 
+/* The frameless macOS window overlays its traffic lights on the sidebar's top
+   edge (ending near y=32); reserve a title-bar-height strip so the logo row
+   clears them. The shell marks the document via `dsh-desktop-platform`. */
+:global(html[data-dsh-desktop-platform='darwin']) .root {
+  padding-top: 32px;
+}
+
 /* Scrollbars in the column are a pointer affordance: the shell adds this
    class whenever the pointer is not inside (SidebarRoot.tsx owns the linger),
    and rebinding ui-theme's indirection pair to `transparent` takes the thumb

@@ -68,7 +68,7 @@ DeepSeek Harness 已经提供完整的 agent 运行时与 Web GUI。这个壳不
 pnpm --filter @deepseek-ai/dsh-desktop dev
 ```
 
-`dev` 会构建这个壳并启动 Electron；`build` 与 `start` 则分两步运行。窗口先显示连接中页面，直到 harness 报告就绪，然后加载所提供的源。
+`dev` 会构建这个壳并启动 Electron，然后监听 `src/`，每当编译产物 `lib/` 稳定后自动重启应用——改壳代码无需手动重跑。`build` 与 `start` 则分两步运行。窗口先显示连接中页面，直到 harness 报告就绪，然后加载所提供的源。
 
 ### 打包
 
