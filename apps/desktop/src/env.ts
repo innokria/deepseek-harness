@@ -23,11 +23,24 @@ export interface DesktopEnv {
   maxRestartDelayMs: number
   /** Graceful-shutdown window before the supervisor escalates to SIGKILL. */
   killTimeoutMs: number
+  /** Interval between auto-update background re-checks, in milliseconds. */
+  updateCheckIntervalMs: number
 }
 
 const DSH_BIN_ENV = 'DSH_DESKTOP_DSH_BIN'
 const PORT_ENV = 'DSH_DESKTOP_PORT'
 const LOG_DIR_ENV = 'DSH_DESKTOP_LOG_DIR'
+const UPDATE_INTERVAL_ENV = 'DSH_DESKTOP_UPDATE_INTERVAL_MS'
+
+/** Background re-check interval: once every four hours by default. */
+const DEFAULT_UPDATE_INTERVAL_MS = 4 * 60 * 60 * 1000
+
+/** Parse a positive-integer environment override, falling back on a default. */
+function positiveInt(raw: string | undefined, fallback: number): number {
+  if (raw === undefined || raw === '') return fallback
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
 
 function port(): string {
   return process.env[PORT_ENV] ?? '0'
@@ -94,5 +107,6 @@ export function resolveDesktopEnv(resourceRoot: string): DesktopEnv {
     restartDelayMs: 500,
     maxRestartDelayMs: 10000,
     killTimeoutMs: 5000,
+    updateCheckIntervalMs: positiveInt(process.env[UPDATE_INTERVAL_ENV], DEFAULT_UPDATE_INTERVAL_MS),
   }
 }

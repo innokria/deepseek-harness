@@ -23,6 +23,14 @@ asar: true
 # rebuild (which would otherwise re-run `pnpm install --production` and trip
 # the workspace's postinstall).
 npmRebuild: false
+# In-app auto-update feed. electron-updater reads the `latest-mac.yml` /
+# `latest.yml` this config generates (written locally even under
+# `--publish never`) and downloads the release assets they name. The release
+# workflow uploads that metadata alongside the installers.
+publish:
+  provider: github
+  owner: salathleizhang
+  repo: deepseek-harness-desktop
 mac:
   icon: build/icon.png
   category: public.app-category.developer-tools
@@ -32,8 +40,11 @@ mac:
   # release workflow's environment).
   identity: "Junwei Zhang (7HP3X3977Y)"
   notarize: true
+  # `dmg` stays the one-click manual installer; `zip` is the artifact
+  # electron-updater downloads for in-app updates (macOS silent replace).
   target:
     - dmg
+    - zip
 win:
   icon: build/icon.png
   target:

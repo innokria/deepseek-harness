@@ -64,6 +64,7 @@ It is a community project built on DeepSeek Harness, not an official DeepSeek pr
 - Lives in the system tray; closing the window hides to tray instead of quitting.
 - Launch at login from General settings or the tray (packaged builds only; off by default).
 - Optional system notifications on unexpected exit, repeated crashes, and recovery (on by default).
+- Checks for updates in the background and downloads them; once downloaded, a badge appears beside the Settings trigger and the update installs on the next quit.
 
 ## Quick start
 
@@ -121,6 +122,7 @@ A tag-triggered workflow ([desktop-release.yml](.github/workflows/desktop-releas
 - macOS: signed with a Developer ID Application identity and notarized.
 - Windows: unsigned until an Authenticode certificate is added.
 - macOS x64: deferred until the harness's native dependencies are built for x64.
+- Auto-update: the `publish` config in `electron-builder.yml` writes `latest-mac.yml` / `latest.yml` (under `--publish never`), which the workflow uploads alongside the installers to serve the in-app `electron-updater` feed.
 
 ## Environment
 
@@ -131,18 +133,19 @@ A tag-triggered workflow ([desktop-release.yml](.github/workflows/desktop-releas
 | `DSH_DESKTOP_LOG_DIR` | platform log dir | Directory for the child's combined `harness.log`. |
 | `DSH_DESKTOP_NODE_VERSION` | `v22.19.0` | Node version `prepare:runtime` downloads. |
 | `DSH_DESKTOP_ARCH` | `process.arch` | Architecture of the Node runtime `prepare:runtime` stages; overrides the host arch for a cross-build. |
+| `DSH_DESKTOP_UPDATE_INTERVAL_MS` | `14400000` | Interval between auto-update background re-checks, in milliseconds. |
 
 The child's stdout/stderr go to `harness.log`; the readiness line (`dsh web: http://127.0.0.1:<port>`) is what the supervisor waits for.
 
 ## Security posture
 
-`contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. The preload (`preload.cjs`) exposes `platform`, the Electron version, window controls, launch-at-login / notification preferences, and a deep-link subscription. Host access stays on the existing loopback `/api` fence; the preload re-exposes no privileged host method.
+`contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. The preload (`preload.cjs`) exposes `platform`, the Electron version, window controls, launch-at-login / notification preferences, a deep-link subscription, and a narrow update bridge (status read/subscribe, check, install). Host access stays on the existing loopback `/api` fence; the preload re-exposes no privileged host method.
 
 ## Known limitations
 
 - The `pnpm deploy` closure must include the frontend dist (`@deepseek-ai/dsh-web-frontend/dist`); this is verified against a real install, not yet asserted by a gate.
-- Auto-update is unimplemented; deep-link forwarding is wired end to end.
-- The macOS installer is signed and notarized; the Windows installer is unsigned and the auto-update feed is not configured.
+- Deep-link forwarding is wired end to end.
+- The macOS installer is signed and notarized; the Windows installer is unsigned, so a Windows auto-update may surface a SmartScreen prompt until an Authenticode certificate is added.
 
 ## License
 
