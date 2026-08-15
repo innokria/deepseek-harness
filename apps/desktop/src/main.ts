@@ -35,39 +35,47 @@ const CONNECTING_HTML = `<!doctype html>
 
 
 /**
- * Frameless Windows: visible caption + drag strip that does not steal chrome clicks.
- * Official (no-skin) UI needs painted min/max/close; a hairline drag edge plus a
- * mid-top drag band avoids turning window moves into text selection.
+ * Frameless Windows caption + minimal drag chrome.
+ * A wide mid-header drag overlay previously swallowed clicks on "子代理"
+ * and the Files/Changes tabs. Keep only a thin top edge + left brand strip,
+ * paint visible caption buttons, and show grab cursor on drag regions.
  */
 const WINDOW_DRAG_CSS = `
 body { -webkit-app-region: no-drag; }
+/* Hairline along the very top — safe to drag without covering controls. */
 #dsh-desktop-drag-edge {
   position: fixed;
   top: 0;
   left: 0;
   right: 138px;
-  height: 8px;
+  height: 6px;
   z-index: 2147483646;
   -webkit-app-region: drag;
   -webkit-user-select: none;
   user-select: none;
+  cursor: grab;
 }
+#dsh-desktop-drag-edge:active { cursor: grabbing; }
+/* Left brand gutter only — does not cover center header or right panel tabs. */
 #dsh-desktop-drag {
   position: fixed;
-  top: 8px;
-  left: 220px;
-  right: 138px;
-  height: 32px;
-  z-index: 2147483646;
+  top: 6px;
+  left: 0;
+  width: 168px;
+  height: 34px;
+  z-index: 2147483645;
   -webkit-app-region: drag;
   -webkit-user-select: none;
   user-select: none;
+  cursor: grab;
 }
+#dsh-desktop-drag:active { cursor: grabbing; }
 [data-skin-chrome="titlebar"] { -webkit-app-region: no-drag; }
 [data-skin-chrome="titlebar"] > span:not([class*="TitlebarBtn"]):not([data-dsh-caption]) {
   -webkit-app-region: drag;
   -webkit-user-select: none;
   user-select: none;
+  cursor: grab;
 }
 [data-skin-chrome="titlebar"] [class*="TitlebarBtn"],
 [data-skin-chrome="titlebar"] [data-dsh-caption],
@@ -77,6 +85,7 @@ body { -webkit-app-region: no-drag; }
   pointer-events: auto !important;
   -webkit-user-select: none;
   user-select: none;
+  cursor: pointer;
 }
 #dsh-desktop-caption {
   position: fixed;
@@ -140,10 +149,12 @@ const WIRE_SKIN_CAPTION_JS = `(() => {
   const edge = document.createElement('div');
   edge.id = 'dsh-desktop-drag-edge';
   edge.setAttribute('aria-hidden', 'true');
+  edge.title = '拖动窗口';
 
   const drag = document.createElement('div');
   drag.id = 'dsh-desktop-drag';
   drag.setAttribute('aria-hidden', 'true');
+  drag.title = '拖动窗口';
 
   const bar = document.createElement('div');
   bar.id = 'dsh-desktop-caption';
