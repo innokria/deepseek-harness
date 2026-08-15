@@ -35,24 +35,39 @@ const CONNECTING_HTML = `<!doctype html>
 
 
 /**
- * Frameless Windows: inject a top drag strip + caption hit targets.
- * Official (no-skin) UI has no [data-skin-chrome=titlebar], so body-only
- * no-drag left the window undraggable. Keep controls/clickables no-drag.
+ * Frameless Windows: visible caption + drag strip that does not steal chrome clicks.
+ * Official (no-skin) UI needs painted min/max/close; a hairline drag edge plus a
+ * mid-top drag band avoids turning window moves into text selection.
  */
 const WINDOW_DRAG_CSS = `
 body { -webkit-app-region: no-drag; }
-#dsh-desktop-drag {
+#dsh-desktop-drag-edge {
   position: fixed;
   top: 0;
   left: 0;
   right: 138px;
-  height: 12px;
+  height: 8px;
   z-index: 2147483646;
   -webkit-app-region: drag;
+  -webkit-user-select: none;
+  user-select: none;
+}
+#dsh-desktop-drag {
+  position: fixed;
+  top: 8px;
+  left: 220px;
+  right: 138px;
+  height: 32px;
+  z-index: 2147483646;
+  -webkit-app-region: drag;
+  -webkit-user-select: none;
+  user-select: none;
 }
 [data-skin-chrome="titlebar"] { -webkit-app-region: no-drag; }
 [data-skin-chrome="titlebar"] > span:not([class*="TitlebarBtn"]):not([data-dsh-caption]) {
   -webkit-app-region: drag;
+  -webkit-user-select: none;
+  user-select: none;
 }
 [data-skin-chrome="titlebar"] [class*="TitlebarBtn"],
 [data-skin-chrome="titlebar"] [data-dsh-caption],
@@ -60,33 +75,52 @@ body { -webkit-app-region: no-drag; }
 #dsh-desktop-caption * {
   -webkit-app-region: no-drag !important;
   pointer-events: auto !important;
+  -webkit-user-select: none;
+  user-select: none;
 }
 #dsh-desktop-caption {
   position: fixed;
   top: 0;
   right: 0;
   z-index: 2147483647;
-  height: 36px;
+  height: 40px;
   display: flex;
   align-items: stretch;
   margin: 0;
-  padding: 0 4px 0 0;
+  padding: 0;
   gap: 0;
   box-sizing: border-box;
   -webkit-app-region: no-drag;
 }
 #dsh-desktop-caption button {
   width: 46px;
-  height: 36px;
+  height: 40px;
   margin: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: transparent;
-  font-size: 0;
+  color: #3c4043;
+  font: 16px/40px "Segoe UI Symbol", "Segoe UI", sans-serif;
   cursor: pointer;
   -webkit-app-region: no-drag !important;
+}
+#dsh-desktop-caption button:hover { background: #00000014; }
+#dsh-desktop-caption button[data-dsh-caption="close"]:hover {
+  background: #e81123;
+  color: #fff;
+}
+#dsh-desktop-caption[data-mode="overlay"] button {
+  color: transparent;
+  background: transparent;
+  font-size: 0;
+}
+#dsh-desktop-caption[data-mode="overlay"] button:hover {
+  background: #ffffff33;
+  color: transparent;
+}
+#dsh-desktop-caption[data-mode="overlay"] button[data-dsh-caption="close"]:hover {
+  background: #e81123;
 }
 button, a, input, textarea, select, [role="button"], [role="textbox"],
 [role="menuitem"], [contenteditable="true"], canvas, iframe, video {
@@ -103,6 +137,10 @@ const WIRE_SKIN_CAPTION_JS = `(() => {
   const root = document.createElement('div');
   root.id = 'dsh-desktop-chrome';
 
+  const edge = document.createElement('div');
+  edge.id = 'dsh-desktop-drag-edge';
+  edge.setAttribute('aria-hidden', 'true');
+
   const drag = document.createElement('div');
   drag.id = 'dsh-desktop-drag';
   drag.setAttribute('aria-hidden', 'true');
@@ -112,16 +150,21 @@ const WIRE_SKIN_CAPTION_JS = `(() => {
   bar.setAttribute('role', 'group');
   bar.setAttribute('aria-label', 'Window controls');
 
+  const syncMode = () => {
+    bar.dataset.mode = document.querySelector('[data-skin-chrome="titlebar"]') ? 'overlay' : 'chrome';
+  };
+
   const actions = [
-    ['min', 'Minimize', () => api.minimize()],
-    ['max', 'Maximize', () => api.maximize()],
-    ['close', 'Close', () => api.close()],
+    ['min', 'Minimize', '–', () => api.minimize()],
+    ['max', 'Maximize', '□', () => api.maximize()],
+    ['close', 'Close', '×', () => api.close()],
   ];
-  for (const [id, label, run] of actions) {
+  for (const [id, label, glyph, run] of actions) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.dataset.dshCaption = id;
     btn.setAttribute('aria-label', label);
+    btn.textContent = glyph;
     btn.style.webkitAppRegion = 'no-drag';
     const fire = (event) => {
       event.preventDefault();
@@ -136,10 +179,12 @@ const WIRE_SKIN_CAPTION_JS = `(() => {
     bar.appendChild(btn);
   }
 
-  root.append(drag, bar);
+  root.append(edge, drag, bar);
   const mount = () => {
     if (!document.body) return false;
     document.body.appendChild(root);
+    syncMode();
+    new MutationObserver(syncMode).observe(document.documentElement, { childList: true, subtree: true });
     return true;
   };
   if (!mount()) {
