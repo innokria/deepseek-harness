@@ -56,6 +56,7 @@ DeepSeek Harness 已经提供完整的 agent 运行时与 Web GUI。这个壳不
 - 将 `dsh://` 深链转发给渲染层。
 - 只监听随机的 `127.0.0.1` 端口（默认 `--port 0`）。
 - 在窗口、macOS Dock 与打包的 `.icns`/`.ico` 中使用 DSH 品牌图标。
+- 后台检查并下载更新；下载完成后在设置触发器旁出现徽标，并在下一次退出时安装更新。
 
 ## 快速开始
 
@@ -113,6 +114,7 @@ electron-builder 通过 `extraResources` 把两者复制进 `resources/`。启�
 - macOS：使用 Developer ID Application 身份签名并已公证。
 - Windows：在加入 Authenticode 证书之前仍为未签名。
 - macOS x64：要等 harness 的原生依赖完成 x64 构建后再补上。
+- 自动更新：`electron-builder.yml` 的 `publish` 配置会在 `--publish never` 下写出 `latest-mac.yml` / `latest.yml`，workflow 随安装包一并上传，供应用内 `electron-updater` 更新源使用。
 
 ## 环境变量
 
@@ -123,15 +125,16 @@ electron-builder 通过 `extraResources` 把两者复制进 `resources/`。启�
 | `DSH_DESKTOP_LOG_DIR` | 平台日志目录 | 子进程合并的 `harness.log` 所在目录。 |
 | `DSH_DESKTOP_NODE_VERSION` | `v22.19.0` | `prepare:runtime` 下载的 Node 版本。 |
 | `DSH_DESKTOP_ARCH` | `process.arch` | `prepare:runtime` 暂存的 Node 运行时架构；跨架构构建时覆盖宿主机架构。 |
+| `DSH_DESKTOP_UPDATE_INTERVAL_MS` | `14400000` | 自动更新后台复查的间隔，单位毫秒。 |
 
 子进程的 stdout/stderr 写入 `harness.log`；就绪行（`dsh web: http://127.0.0.1:<port>`）正是监督器所等待的内容。
 
 ## 安全态势
 
-`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`。preload（`preload.cjs`）只暴露 `platform`、Electron 版本与一个深链订阅。宿主访问仍走既有的 loopback `/api` 围栏；preload 不重新暴露任何特权宿主方法。
+`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`。preload（`preload.cjs`）只暴露 `platform`、Electron 版本、一个深链订阅与一个窄更新桥（状态读取/订阅、检查、安装）。宿主访问仍走既有的 loopback `/api` 围栏；preload 不重新暴露任何特权宿主方法。
 
 ## 已知限制
 
 - `pnpm deploy` 闭包必须包含前端 dist（`@deepseek-ai/dsh-web-frontend/dist`）；目前靠真实安装验证，尚未由门禁断言。
-- 托盘、原生通知、登录自启与自动更新尚未实现；深链转发已端到端接通。
-- macOS 安装包已签名并公证；Windows 安装包仍为未签名，自动更新源亦未配置。
+- 原生通知与登录自启尚未实现；深链转发已端到端接通。
+- macOS 安装包已签名并公证；Windows 安装包仍为未签名，因此 Windows 自动更新在加入 Authenticode 证书前可能触发 SmartScreen 提示。

@@ -273,6 +273,10 @@
     - id: ui-trajectory
       name: '@deepseek-ai/dsh-client-ui-trajectory'
 
+    # Desktop auto-update badge beside Settings; renders nothing in a browser.
+    - id: ui-update
+      name: '@deepseek-ai/dsh-client-ui-update'
+
 # ── the agent plane moves behind agent presets ─────────────────────────────
 #
 # Every row below composes what ONE agent contributes to the host registries:

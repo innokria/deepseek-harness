@@ -1,0 +1,56 @@
+/* Sidebar-foot update action: mirrors the footer badge geometry (full-width
+   row when wide, 36px circular icon on the rail). */
+
+.layer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 49px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 49px;
+  padding: 0 8px 0 6px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.button:hover {
+  background: var(--dsw-alias-interactive-bg-hover-solid);
+}
+
+.button[data-update-state='downloaded'] {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer.rail {
+  width: 36px;
+  height: 36px;
+}
+
+.rail .button {
+  justify-content: center;
+  gap: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+}

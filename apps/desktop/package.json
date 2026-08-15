@@ -13,9 +13,12 @@
     "test": "pnpm --workspace-root exec vitest run apps/desktop/tests",
     "typecheck": "tsc -p . --noEmit && tsc -p tests/tsconfig.json",
     "prepare:runtime": "node scripts/prepare-runtime.mjs",
-    "dist": "tsc -p . && node scripts/prepare-runtime.mjs && electron-builder",
-    "dist:mac": "tsc -p . && node scripts/prepare-runtime.mjs && electron-builder --mac",
-    "dist:win": "tsc -p . && node scripts/prepare-runtime.mjs && electron-builder --win"
+    "dist": "tsc -p . && node scripts/prepare-runtime.mjs && electron-builder --publish never",
+    "dist:mac": "tsc -p . && node scripts/prepare-runtime.mjs && electron-builder --mac --publish never",
+    "dist:win": "tsc -p . && node scripts/prepare-runtime.mjs && electron-builder --win --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

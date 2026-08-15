@@ -9,7 +9,10 @@
 # stays unsigned until an Authenticode certificate is added. The installers use
 # fixed, version-free filenames (set in electron-builder.yml), so the
 # releases/latest/download/<name> links in the READMEs always resolve to the
-# newest release; an in-app electron-updater feed stays out of scope for now.
+# newest release. electron-builder's `publish` config (with `--publish never`)
+# also writes the `latest-mac.yml` / `latest.yml` update metadata, which the
+# jobs upload alongside the installers to serve the in-app electron-updater
+# feed.
 name: Release (Desktop)
 
 on:
@@ -105,7 +108,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-macos
-          path: apps/desktop/release/*.dmg
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+            apps/desktop/release/*.blockmap
+            apps/desktop/release/latest-mac.yml
           if-no-files-found: error
           retention-days: 7
 
@@ -143,7 +150,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-windows
-          path: apps/desktop/release/*.exe
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.blockmap
+            apps/desktop/release/latest.yml
           if-no-files-found: error
           retention-days: 7
 

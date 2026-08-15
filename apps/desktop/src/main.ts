@@ -15,6 +15,8 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { HarnessSupervisor } from './harness.ts'
 import { resolveDesktopEnv } from './env.ts'
+import { UpdateController } from './update.ts'
+import type { UpdateStatus } from './update-status.ts'
 import { createDesktopLifecycle, type DesktopLifecycle } from './window-lifecycle.ts'
 
 const APP_NAME = 'DeepSeek Harness'
@@ -207,8 +209,12 @@ let mainWindow: BrowserWindow | null = null
 let supervisor: HarnessSupervisor | null = null
 let tray: Tray | null = null
 let lifecycle: DesktopLifecycle | null = null
+let updater: UpdateController | null = null
 let quitReleased = false
 let pendingDeepLink: string | null = null
+
+/** Status reported while no updater exists (development or non-packaged runs). */
+const UNSUPPORTED_STATUS: UpdateStatus = { phase: 'unsupported' }
 
 /**
  * The square DeepSeek icon shipped under `build/` (electron-builder's build
@@ -399,6 +405,13 @@ function releaseAppQuit(): void {
   quitReleased = true
   tray?.destroy()
   tray = null
+  // A downloaded update installs on this quit; otherwise quit normally. The
+  // updater's quitAndInstall quits and runs the installer, so `app.quit()` is
+  // deliberately not called again on that path.
+  if (updater !== null && updater.hasDownloadedUpdate()) {
+    updater.install()
+    return
+  }
   app.quit()
 }
 
@@ -412,6 +425,18 @@ function requestAppQuit(): Promise<void> {
   })
 }
 
+/** Register the renderer-facing updater IPC surface once per process. */
+function registerUpdaterIpc(): void {
+  ipcMain.handle('dsh:updater:get-status', () => updater?.status ?? UNSUPPORTED_STATUS)
+  ipcMain.handle('dsh:updater:check', () => { void updater?.check() })
+  // "Install now" is a graceful quit with install-on-quit: it reuses the same
+  // teardown as every other quit source rather than quitting out from under
+  // the Host. Guarded so a stray call without a downloaded update is a no-op.
+  ipcMain.handle('dsh:updater:install', () => {
+    if (updater?.hasDownloadedUpdate() === true) void requestAppQuit()
+  })
+}
+
 async function boot(): Promise<void> {
   // macOS dock shows the Electron glyph until the app is packaged; mirror the
   // build icon during development only (the packaged bundle's `.icns` is set
@@ -421,6 +446,7 @@ async function boot(): Promise<void> {
     if (devIcon !== undefined) app.dock?.setIcon(devIcon)
   }
   registerWindowControlIpc()
+  registerUpdaterIpc()
   const resourceRoot = app.isPackaged ? process.resourcesPath : app.getAppPath()
   const env = resolveDesktopEnv(resourceRoot)
   const sup = new HarnessSupervisor(env.launch.command, env.launch.args, {
@@ -442,6 +468,17 @@ async function boot(): Promise<void> {
   })
   sup.start()
   hardenSession()
+  // A packaged build has an update feed (electron-builder's publish config);
+  // development runs have no feed, so no updater exists and the renderer sees
+  // `unsupported`. Download runs in the background; install waits for a quit.
+  if (app.isPackaged) {
+    updater = new UpdateController({ checkIntervalMs: env.updateCheckIntervalMs })
+    updater.on('status', (status) => {
+      const win = mainWindow
+      if (win !== null && !win.isDestroyed()) win.webContents.send('dsh:updater:status', status)
+    })
+    updater.start()
+  }
   lifecycle = createDesktopLifecycle({
     getWindow: () => mainWindow ?? undefined,
     createWindow: async () => createWindow(),
