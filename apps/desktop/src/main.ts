@@ -5,6 +5,7 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  Notification,
   session,
   shell,
   Tray,
@@ -16,6 +17,15 @@ import { join } from 'node:path'
 import { HarnessSupervisor } from './harness.ts'
 import { resolveDesktopEnv } from './env.ts'
 import { createDesktopLifecycle, type DesktopLifecycle } from './window-lifecycle.ts'
+import { HIDDEN_LAUNCH_ARG, shouldStartHidden, type LoginItemController } from './autolaunch.ts'
+import {
+  createNotificationThrottle,
+  RECOVERED_KEY,
+  RECOVERED_NOTIFICATION,
+  restartNotificationFor,
+  type NotificationSink,
+} from './notifications.ts'
+import { createPreferencesStore, DEFAULT_PREFERENCES, type PreferencesStore } from './preferences.ts'
 
 const APP_NAME = 'DeepSeek Harness'
 
@@ -209,6 +219,9 @@ let tray: Tray | null = null
 let lifecycle: DesktopLifecycle | null = null
 let quitReleased = false
 let pendingDeepLink: string | null = null
+let preferencesStore: PreferencesStore | null = null
+let notificationsEnabled = DEFAULT_PREFERENCES.notificationsEnabled
+let hiddenLaunch = false
 
 /**
  * The square DeepSeek icon shipped under `build/` (electron-builder's build
@@ -301,7 +314,7 @@ function createWindow(): BrowserWindow {
     },
   })
   win.once('ready-to-show', () => {
-    if (!(lifecycle?.isQuitting ?? false)) win.show()
+    if (!(lifecycle?.isQuitting ?? false) && !hiddenLaunch) win.show()
   })
   // An ordinary close hides to the tray; the Host stays alive until an
   // explicit quit disposes it (see window-lifecycle.ts).
@@ -383,16 +396,88 @@ function deliverDeepLink(url: string): void {
   }
 }
 
-function createTray(): void {
-  tray = new Tray(trayImage())
-  tray.setToolTip(APP_NAME)
+/** Native notification backend backed by Electron's Notification API. */
+function createElectronNotificationSink(): NotificationSink {
+  return {
+    show({ title, body }) {
+      if (!Notification.isSupported()) return
+      new Notification({ title, body }).show()
+    },
+  }
+}
+
+/**
+ * OS login-item access. Windows registers a Run key with the hidden-launch
+ * argument; macOS login items (SMAppService) take no custom arguments, so
+ * hidden launch is detected via `wasOpenedAtLogin` instead of argv there.
+ */
+function createLoginItemController(): LoginItemController {
+  const isDarwin = process.platform === 'darwin'
+  return {
+    isEnabled() {
+      if (isDarwin) return app.getLoginItemSettings().openAtLogin
+      return app.getLoginItemSettings({ path: process.execPath, args: [HIDDEN_LAUNCH_ARG] }).openAtLogin
+    },
+    setEnabled(enabled) {
+      if (isDarwin) {
+        // openAsHidden is best-effort: SMAppService ignores it, which is why
+        // hidden launch detection falls back to wasOpenedAtLogin.
+        app.setLoginItemSettings({ openAtLogin: enabled, openAsHidden: enabled })
+      } else {
+        app.setLoginItemSettings({ openAtLogin: enabled, path: process.execPath, args: [HIDDEN_LAUNCH_ARG] })
+      }
+    },
+  }
+}
+
+/** Build the tray menu, querying live OS and preference state. */
+function buildTrayMenu(): Menu {
+  const loginItem = createLoginItemController()
   const template: MenuItemConstructorOptions[] = [
     { label: 'Open Window', click: () => { void lifecycle?.showWindow() } },
     { type: 'separator' },
+    {
+      label: 'Launch at login',
+      type: 'checkbox',
+      // An unpackaged build must never register the bare electron binary.
+      enabled: app.isPackaged,
+      checked: loginItem.isEnabled(),
+      click: (menuItem) => {
+        loginItem.setEnabled(menuItem.checked)
+        refreshTrayMenu()
+      },
+    },
+    {
+      label: 'Notifications',
+      type: 'checkbox',
+      checked: notificationsEnabled,
+      click: (menuItem) => {
+        notificationsEnabled = menuItem.checked
+        preferencesStore?.write({ notificationsEnabled })
+        refreshTrayMenu()
+      },
+    },
+    { type: 'separator' },
     { label: 'Quit', click: () => { void requestAppQuit() } },
   ]
-  tray.setContextMenu(Menu.buildFromTemplate(template))
-  tray.on('click', () => { void lifecycle?.showWindow() })
+  return Menu.buildFromTemplate(template)
+}
+
+function refreshTrayMenu(): void {
+  if (tray === null) return
+  tray.setContextMenu(buildTrayMenu())
+}
+
+function createTray(): void {
+  tray = new Tray(trayImage())
+  tray.setToolTip(APP_NAME)
+  refreshTrayMenu()
+  // Rebuild on every popup so checkbox states reflect the live OS state.
+  tray.on('click', () => {
+    refreshTrayMenu()
+    void lifecycle?.showWindow()
+  })
+  tray.on('right-click', () => { refreshTrayMenu() })
 }
 
 function releaseAppQuit(): void {
@@ -413,6 +498,15 @@ function requestAppQuit(): Promise<void> {
 }
 
 async function boot(): Promise<void> {
+  // Windows toast notifications require an explicit AppUserModelID.
+  app.setAppUserModelId('com.deepseek.dsh-desktop')
+  preferencesStore = createPreferencesStore(join(app.getPath('userData'), 'preferences.json'))
+  notificationsEnabled = preferencesStore.read().notificationsEnabled
+  hiddenLaunch = shouldStartHidden({
+    argv: process.argv,
+    openedAtLogin: app.getLoginItemSettings().wasOpenedAtLogin,
+    platform: process.platform,
+  })
   // macOS dock shows the Electron glyph until the app is packaged; mirror the
   // build icon during development only (the packaged bundle's `.icns` is set
   // by electron-builder and needs no runtime override).
@@ -430,14 +524,30 @@ async function boot(): Promise<void> {
     killTimeoutMs: env.killTimeoutMs,
   })
   supervisor = sup
+  const notificationSink = createElectronNotificationSink()
+  const notificationThrottle = createNotificationThrottle(5 * 60_000)
+  let crashed = false
   sup.on('ready', () => {
     if (mainWindow !== null && !mainWindow.isDestroyed()) loadWindow(mainWindow)
+    if (crashed) {
+      crashed = false
+      if (notificationsEnabled && notificationThrottle.allow(RECOVERED_KEY, Date.now())) {
+        notificationSink.show(RECOVERED_NOTIFICATION)
+      }
+    }
   })
-  sup.on('restart', () => {
+  sup.on('restart', ({ attempt }) => {
+    crashed = true
     // An unexpected exit killed the old origin; return to connecting until the
     // next child reports ready.
     if (mainWindow !== null && !mainWindow.isDestroyed()) {
       void mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(CONNECTING_HTML)}`)
+    }
+    if (notificationsEnabled) {
+      const rule = restartNotificationFor(attempt)
+      if (rule !== undefined && notificationThrottle.allow(rule.key, Date.now())) {
+        notificationSink.show(rule.notification)
+      }
     }
   })
   sup.start()
