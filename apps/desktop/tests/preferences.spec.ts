@@ -17,19 +17,36 @@ describe('desktop preferences normalization', () => {
     {},
     { notificationsEnabled: 'yes' },
     { notificationsEnabled: 1 },
+    { launchAtLoginEnabled: 'yes' },
   ])('falls back to defaults for %o', (raw) => {
     expect(normalizePreferences(raw)).toEqual(DEFAULT_PREFERENCES)
   })
 
-  it('keeps an explicit boolean value', () => {
+  it('keeps explicit boolean values', () => {
+    expect(normalizePreferences({
+      notificationsEnabled: false,
+      launchAtLoginEnabled: true,
+    })).toEqual({
+      notificationsEnabled: false,
+      launchAtLoginEnabled: true,
+    })
+  })
+
+  it('defaults launchAtLoginEnabled to false when omitted', () => {
     expect(normalizePreferences({ notificationsEnabled: false })).toEqual({
       notificationsEnabled: false,
+      launchAtLoginEnabled: false,
     })
   })
 
   it('ignores unknown fields', () => {
-    expect(normalizePreferences({ notificationsEnabled: false, extra: 'junk' })).toEqual({
+    expect(normalizePreferences({
       notificationsEnabled: false,
+      launchAtLoginEnabled: false,
+      extra: 'junk',
+    })).toEqual({
+      notificationsEnabled: false,
+      launchAtLoginEnabled: false,
     })
   })
 })
@@ -41,8 +58,11 @@ describe('desktop preferences store', () => {
       const store = createPreferencesStore(join(dir, 'preferences.json'))
       expect(store.read()).toEqual(DEFAULT_PREFERENCES)
 
-      store.write({ notificationsEnabled: false })
-      expect(store.read()).toEqual({ notificationsEnabled: false })
+      store.write({ notificationsEnabled: false, launchAtLoginEnabled: true })
+      expect(store.read()).toEqual({
+        notificationsEnabled: false,
+        launchAtLoginEnabled: true,
+      })
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

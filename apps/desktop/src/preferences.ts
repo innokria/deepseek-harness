@@ -5,10 +5,16 @@ import { dirname } from 'node:path'
 export interface DesktopPreferences {
   /** Allow the shell to raise native notifications. */
   notificationsEnabled: boolean
+  /**
+   * Register the packaged app to start at OS login (hidden). Defaults to
+   * off; unpackaged Electron builds never apply this to the OS.
+   */
+  launchAtLoginEnabled: boolean
 }
 
 export const DEFAULT_PREFERENCES: DesktopPreferences = Object.freeze({
   notificationsEnabled: true,
+  launchAtLoginEnabled: false,
 })
 
 /**
@@ -22,6 +28,9 @@ export function normalizePreferences(raw: unknown): DesktopPreferences {
     notificationsEnabled: typeof source.notificationsEnabled === 'boolean'
       ? source.notificationsEnabled
       : DEFAULT_PREFERENCES.notificationsEnabled,
+    launchAtLoginEnabled: typeof source.launchAtLoginEnabled === 'boolean'
+      ? source.launchAtLoginEnabled
+      : DEFAULT_PREFERENCES.launchAtLoginEnabled,
   }
 }
 

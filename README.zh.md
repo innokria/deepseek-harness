@@ -61,6 +61,9 @@ DeepSeek Harness 已经提供完整的 agent 运行时与 Web GUI。这个壳不
 - 将 `dsh://` 深链转发给渲染层。
 - 只监听随机的 `127.0.0.1` 端口（默认 `--port 0`）。
 - 在窗口、macOS Dock 与打包的 `.icns`/`.ico` 中使用 DSH 品牌图标。
+- 驻留系统托盘；关闭窗口隐藏到托盘而不是退出。
+- 可在通用设置或托盘菜单开启开机自启（仅安装版可生效，默认关闭）。
+- 可选系统通知：意外退出、反复崩溃、恢复后提示（默认开启）。
 
 ## 快速开始
 
@@ -133,12 +136,12 @@ electron-builder 通过 `extraResources` 把两者复制进 `resources/`。启�
 
 ## 安全态势
 
-`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`。preload（`preload.cjs`）只暴露 `platform`、Electron 版本与一个深链订阅。宿主访问仍走既有的 loopback `/api` 围栏；preload 不重新暴露任何特权宿主方法。
+`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`。preload（`preload.cjs`）暴露 `platform`、Electron 版本、窗口控制、开机自启 / 系统通知偏好与一个深链订阅。宿主访问仍走既有的 loopback `/api` 围栏；preload 不重新暴露任何特权宿主方法。
 
 ## 已知限制
 
 - `pnpm deploy` 闭包必须包含前端 dist（`@deepseek-ai/dsh-web-frontend/dist`）；目前靠真实安装验证，尚未由门禁断言。
-- 托盘、原生通知、登录自启与自动更新尚未实现；深链转发已端到端接通。
+- 自动更新尚未实现；深链转发已端到端接通。
 - macOS 安装包已签名并公证；Windows 安装包仍为未签名，自动更新源亦未配置。
 
 ## 许可证

@@ -23,6 +23,8 @@ import type {
 import { SettingsRoot } from './SettingsRoot.tsx'
 import { CloseLabel, HeaderContent, TriggerContent } from './chrome.tsx'
 import { GeneralSection } from './GeneralSection.tsx'
+import { LaunchAtLoginRow, readDesktopLaunchAtLoginBridge } from './LaunchAtLoginRow.tsx'
+import { NotificationsRow, readDesktopNotificationsBridge } from './NotificationsRow.tsx'
 import { SettingsDocumentAction } from './SettingsDocumentAction.tsx'
 import type { SettingsDocumentActionInjected } from './SettingsDocumentAction.tsx'
 import { refreshDocumentIfLoaded, SettingsDocumentStore } from './settings-document-store.ts'
@@ -34,6 +36,10 @@ export type {
 export type {
   GeneralSectionComponentProps,
 } from './GeneralSection.tsx'
+export type { LaunchAtLoginRowComponentProps, LaunchAtLoginState } from './LaunchAtLoginRow.tsx'
+export { readDesktopLaunchAtLoginBridge } from './LaunchAtLoginRow.tsx'
+export type { NotificationsRowComponentProps, NotificationsState } from './NotificationsRow.tsx'
+export { readDesktopNotificationsBridge } from './NotificationsRow.tsx'
 export type { SettingsDocumentActionInjected, SettingsDocumentActionProps } from './SettingsDocumentAction.tsx'
 export type { SettingsDocumentState } from './settings-document-store.ts'
 export { SettingsDocumentStore } from './settings-document-store.ts'
@@ -175,4 +181,22 @@ export function apply(ctx: ClientContext): void {
     locale: NS,
     children: { 'settings.general.item': { kind: 'list', scope: 'root' } },
   }, GeneralSection))
+
+  // Desktop shell only: the Electron preload exposes `window.dshDesktop`.
+  if (readDesktopLaunchAtLoginBridge() !== undefined) {
+    ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+      name: 'settings.general.item',
+      id: 'launch-at-login',
+      order: 50,
+      locale: NS,
+    }, LaunchAtLoginRow))
+  }
+  if (readDesktopNotificationsBridge() !== undefined) {
+    ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+      name: 'settings.general.item',
+      id: 'system-notifications',
+      order: 51,
+      locale: NS,
+    }, NotificationsRow))
+  }
 }

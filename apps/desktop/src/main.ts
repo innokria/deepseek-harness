@@ -224,22 +224,24 @@ let notificationsEnabled = DEFAULT_PREFERENCES.notificationsEnabled
 let hiddenLaunch = false
 
 /**
- * The square DeepSeek icon shipped under `build/` (electron-builder's build
- * resource dir). Packaged builds already get their icon from electron-builder
- * (the `.icns`/`.ico` it derives), so this is only present in development
- * where `electron .` would otherwise fall back to the stock Electron glyph.
- * @returns the icon path when the repo's `build/icon.png` exists, else undefined.
+ * Resolve the branded app icon for window chrome, tray (Windows), and toasts.
+ * Packaged builds read `desktop-resources/icon.png`; development uses `build/icon.png`.
+ * @returns absolute path when the asset exists, else undefined.
  */
-function resolveDevIcon(): string | undefined {
-  const candidate = join(app.getAppPath(), 'build', 'icon.png')
-  return existsSync(candidate) ? candidate : undefined
+function resolveAppIcon(): string | undefined {
+  const candidates = app.isPackaged
+    ? [join(process.resourcesPath, 'desktop-resources', 'icon.png')]
+    : [join(app.getAppPath(), 'build', 'icon.png'), join(app.getAppPath(), 'resources', 'icon.png')]
+  return candidates.find((candidate) => existsSync(candidate))
 }
 
-/** Load the app-local tray template, with an empty fallback for incomplete staging. */
+/** Load the tray glyph: macOS template PNG, Windows branded icon, empty fallback. */
 function trayImage(): NativeImage {
   const base = app.isPackaged ? process.resourcesPath : app.getAppPath()
   const dir = app.isPackaged ? join(base, 'desktop-resources') : join(base, 'resources')
-  const path = join(dir, 'trayTemplate.png')
+  const path = process.platform === 'darwin'
+    ? join(dir, 'trayTemplate.png')
+    : (resolveAppIcon() ?? join(dir, 'trayTemplate.png'))
   const image = existsSync(path) ? nativeImage.createFromPath(path) : nativeImage.createEmpty()
   if (process.platform === 'darwin') image.setTemplateImage(true)
   return image
@@ -273,7 +275,7 @@ function hardenSession(): void {
 }
 
 function createWindow(): BrowserWindow {
-  const devIcon = resolveDevIcon()
+  const appIcon = resolveAppIcon()
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -304,7 +306,7 @@ function createWindow(): BrowserWindow {
       backgroundColor: '#00000000',
     }),
     title: APP_NAME,
-    ...(devIcon === undefined ? {} : { icon: devIcon }),
+    ...(appIcon === undefined ? {} : { icon: appIcon }),
     webPreferences: {
       preload: join(app.getAppPath(), 'preload.cjs'),
       contextIsolation: true,
@@ -350,6 +352,45 @@ function windowFromEvent(event: Electron.IpcMainInvokeEvent): BrowserWindow | nu
   return BrowserWindow.fromWebContents(event.sender)
 }
 
+/** Snapshot returned to the Web GUI launch-at-login row. */
+interface LaunchAtLoginState {
+  enabled: boolean
+  /** False in unpackaged Electron so the UI stays off and disabled. */
+  available: boolean
+}
+
+function readLaunchAtLoginState(): LaunchAtLoginState {
+  const enabled = preferencesStore?.read().launchAtLoginEnabled ?? DEFAULT_PREFERENCES.launchAtLoginEnabled
+  return { enabled, available: app.isPackaged }
+}
+
+function writeLaunchAtLoginEnabled(enabled: boolean): LaunchAtLoginState {
+  if (!app.isPackaged) return { enabled: false, available: false }
+  createLoginItemController().setEnabled(enabled)
+  const current = preferencesStore?.read() ?? { ...DEFAULT_PREFERENCES }
+  preferencesStore?.write({ ...current, launchAtLoginEnabled: enabled })
+  refreshTrayMenu()
+  return { enabled, available: true }
+}
+
+/** Snapshot returned to the Web GUI system-notifications row. */
+interface NotificationsPrefState {
+  enabled: boolean
+}
+
+function readNotificationsState(): NotificationsPrefState {
+  const enabled = preferencesStore?.read().notificationsEnabled ?? DEFAULT_PREFERENCES.notificationsEnabled
+  return { enabled }
+}
+
+function writeNotificationsEnabled(enabled: boolean): NotificationsPrefState {
+  notificationsEnabled = enabled
+  const current = preferencesStore?.read() ?? { ...DEFAULT_PREFERENCES }
+  preferencesStore?.write({ ...current, notificationsEnabled: enabled })
+  refreshTrayMenu()
+  return { enabled }
+}
+
 function registerWindowControlIpc(): void {
   ipcMain.handle('dsh:window-minimize', (event) => {
     const win = windowFromEvent(event)
@@ -370,6 +411,14 @@ function registerWindowControlIpc(): void {
   ipcMain.handle('dsh:window-close', (event) => {
     windowFromEvent(event)?.close()
   })
+  ipcMain.handle('dsh:launch-at-login-get', (): LaunchAtLoginState => readLaunchAtLoginState())
+  ipcMain.handle('dsh:launch-at-login-set', (_event, enabled: unknown): LaunchAtLoginState => (
+    writeLaunchAtLoginEnabled(enabled === true)
+  ))
+  ipcMain.handle('dsh:notifications-get', (): NotificationsPrefState => readNotificationsState())
+  ipcMain.handle('dsh:notifications-set', (_event, enabled: unknown): NotificationsPrefState => (
+    writeNotificationsEnabled(enabled === true)
+  ))
 }
 
 /** Load the harness origin, or the connecting page when it is not ready yet. */
@@ -401,7 +450,8 @@ function createElectronNotificationSink(): NotificationSink {
   return {
     show({ title, body }) {
       if (!Notification.isSupported()) return
-      new Notification({ title, body }).show()
+      const icon = resolveAppIcon()
+      new Notification({ title, body, ...(icon === undefined ? {} : { icon }) }).show()
     },
   }
 }
@@ -432,7 +482,7 @@ function createLoginItemController(): LoginItemController {
 
 /** Build the tray menu, querying live OS and preference state. */
 function buildTrayMenu(): Menu {
-  const loginItem = createLoginItemController()
+  const launchAtLogin = readLaunchAtLoginState()
   const template: MenuItemConstructorOptions[] = [
     { label: 'Open Window', click: () => { void lifecycle?.showWindow() } },
     { type: 'separator' },
@@ -440,11 +490,10 @@ function buildTrayMenu(): Menu {
       label: 'Launch at login',
       type: 'checkbox',
       // An unpackaged build must never register the bare electron binary.
-      enabled: app.isPackaged,
-      checked: loginItem.isEnabled(),
+      enabled: launchAtLogin.available,
+      checked: launchAtLogin.enabled,
       click: (menuItem) => {
-        loginItem.setEnabled(menuItem.checked)
-        refreshTrayMenu()
+        writeLaunchAtLoginEnabled(menuItem.checked)
       },
     },
     {
@@ -452,9 +501,7 @@ function buildTrayMenu(): Menu {
       type: 'checkbox',
       checked: notificationsEnabled,
       click: (menuItem) => {
-        notificationsEnabled = menuItem.checked
-        preferencesStore?.write({ notificationsEnabled })
-        refreshTrayMenu()
+        writeNotificationsEnabled(menuItem.checked)
       },
     },
     { type: 'separator' },
@@ -501,18 +548,23 @@ async function boot(): Promise<void> {
   // Windows toast notifications require an explicit AppUserModelID.
   app.setAppUserModelId('com.deepseek.dsh-desktop')
   preferencesStore = createPreferencesStore(join(app.getPath('userData'), 'preferences.json'))
-  notificationsEnabled = preferencesStore.read().notificationsEnabled
+  const prefs = preferencesStore.read()
+  notificationsEnabled = prefs.notificationsEnabled
+  // Packaged builds keep the OS login item aligned with the persisted default
+  // (off unless the user opted in from Settings or the tray).
+  if (app.isPackaged) {
+    createLoginItemController().setEnabled(prefs.launchAtLoginEnabled)
+  }
   hiddenLaunch = shouldStartHidden({
     argv: process.argv,
     openedAtLogin: app.getLoginItemSettings().wasOpenedAtLogin,
     platform: process.platform,
   })
-  // macOS dock shows the Electron glyph until the app is packaged; mirror the
-  // build icon during development only (the packaged bundle's `.icns` is set
-  // by electron-builder and needs no runtime override).
-  if (process.platform === 'darwin') {
-    const devIcon = resolveDevIcon()
-    if (devIcon !== undefined) app.dock?.setIcon(devIcon)
+  // macOS dock / Windows taskbar: always prefer the branded PNG when present
+  // (packaged Windows also needs this if the EXE icon cache is stale).
+  const appIcon = resolveAppIcon()
+  if (process.platform === 'darwin' && appIcon !== undefined) {
+    app.dock?.setIcon(appIcon)
   }
   registerWindowControlIpc()
   const resourceRoot = app.isPackaged ? process.resourcesPath : app.getAppPath()
