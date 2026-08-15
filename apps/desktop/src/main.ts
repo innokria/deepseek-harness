@@ -19,6 +19,21 @@ import { createDesktopLifecycle, type DesktopLifecycle } from './window-lifecycl
 
 const APP_NAME = 'DeepSeek Harness'
 
+/** Deep-link scheme the shell forwards to the renderer untouched. */
+const DEEP_LINK_PREFIX = 'dsh://'
+
+/** Minimal connecting page shown before the harness reports readiness. */
+const CONNECTING_HTML = `<!doctype html>
+<meta charset="utf-8">
+<title>DeepSeek Harness</title>
+<style>
+  body { margin: 0; display: grid; place-items: center; height: 100vh;
+         font: 14px/1.5 system-ui, -apple-system, sans-serif; color: #9aa0a6;
+         background: #1f2328; -webkit-app-region: drag; }
+</style>
+<p>正在启动 DeepSeek Harness…</p>`
+
+
 /**
  * Frameless Windows: inject a top drag strip + caption hit targets.
  * Official (no-skin) UI has no [data-skin-chrome=titlebar], so body-only
