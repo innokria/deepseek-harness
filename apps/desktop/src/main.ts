@@ -19,89 +19,117 @@ import { createDesktopLifecycle, type DesktopLifecycle } from './window-lifecycl
 
 const APP_NAME = 'DeepSeek Harness'
 
-/** Deep-link scheme the shell forwards to the renderer untouched. */
-const DEEP_LINK_PREFIX = 'dsh://'
-
-/** Minimal connecting page shown before the harness reports readiness. */
-const CONNECTING_HTML = `<!doctype html>
-<meta charset="utf-8">
-<title>DeepSeek Harness</title>
-<style>
-  body { margin: 0; display: grid; place-items: center; height: 100vh;
-         font: 14px/1.5 system-ui, -apple-system, sans-serif; color: #9aa0a6;
-         background: #1f2328; -webkit-app-region: drag; }
-</style>
-<p>正在启动 DeepSeek Harness…</p>`
-
 /**
- * Frameless Windows: only the skin titlebar drags. Body-wide drag swallowed
- * clicks on decorative caption glyphs (– □ ×) and turned them into maximize.
+ * Frameless Windows: inject a top drag strip + caption hit targets.
+ * Official (no-skin) UI has no [data-skin-chrome=titlebar], so body-only
+ * no-drag left the window undraggable. Keep controls/clickables no-drag.
  */
 const WINDOW_DRAG_CSS = `
 body { -webkit-app-region: no-drag; }
-[data-skin-chrome="titlebar"] { -webkit-app-region: drag; }
-/* Skin caption glyphs are <span class="…TitlebarBtn">, not <button>. */
+#dsh-desktop-drag {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 138px;
+  height: 12px;
+  z-index: 2147483646;
+  -webkit-app-region: drag;
+}
+[data-skin-chrome="titlebar"] { -webkit-app-region: no-drag; }
+[data-skin-chrome="titlebar"] > span:not([class*="TitlebarBtn"]):not([data-dsh-caption]) {
+  -webkit-app-region: drag;
+}
 [data-skin-chrome="titlebar"] [class*="TitlebarBtn"],
-[data-skin-chrome="titlebar"] [data-dsh-caption] {
+[data-skin-chrome="titlebar"] [data-dsh-caption],
+#dsh-desktop-caption,
+#dsh-desktop-caption * {
   -webkit-app-region: no-drag !important;
-  cursor: pointer;
   pointer-events: auto !important;
+}
+#dsh-desktop-caption {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 2147483647;
+  height: 36px;
+  display: flex;
+  align-items: stretch;
+  margin: 0;
+  padding: 0 4px 0 0;
+  gap: 0;
+  box-sizing: border-box;
+  -webkit-app-region: no-drag;
+}
+#dsh-desktop-caption button {
+  width: 46px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: transparent;
+  font-size: 0;
+  cursor: pointer;
+  -webkit-app-region: no-drag !important;
 }
 button, a, input, textarea, select, [role="button"], [role="textbox"],
 [role="menuitem"], [contenteditable="true"], canvas, iframe, video {
-  -webkit-app-region: no-drag;
+  -webkit-app-region: no-drag !important;
 }
 `
 
-/** Wire skin titlebar – / □ / × to the desktop shell after the skin mounts. */
+/** Inject drag strip + caption buttons (works with or without a skin titlebar). */
 const WIRE_SKIN_CAPTION_JS = `(() => {
   const api = window.dshDesktop;
   if (!api || typeof api.minimize !== 'function') return;
-  const actionFor = (el) => {
-    const marked = el.getAttribute('data-dsh-caption');
-    if (marked === 'min' || marked === 'max' || marked === 'close') return marked;
-    const text = (el.textContent || '').trim();
-    if (text === '–' || text === '-' || text === '−' || text === '—') return 'min';
-    if (text === '□' || text === '❐' || text === '▢' || text === '🗖') return 'max';
-    if (text === '×' || text === '✕' || text === '✖' || text === 'X' || text === 'x') return 'close';
-    return null;
+  if (document.getElementById('dsh-desktop-chrome')) return;
+
+  const root = document.createElement('div');
+  root.id = 'dsh-desktop-chrome';
+
+  const drag = document.createElement('div');
+  drag.id = 'dsh-desktop-drag';
+  drag.setAttribute('aria-hidden', 'true');
+
+  const bar = document.createElement('div');
+  bar.id = 'dsh-desktop-caption';
+  bar.setAttribute('role', 'group');
+  bar.setAttribute('aria-label', 'Window controls');
+
+  const actions = [
+    ['min', 'Minimize', () => api.minimize()],
+    ['max', 'Maximize', () => api.maximize()],
+    ['close', 'Close', () => api.close()],
+  ];
+  for (const [id, label, run] of actions) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.dshCaption = id;
+    btn.setAttribute('aria-label', label);
+    btn.style.webkitAppRegion = 'no-drag';
+    const fire = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      void run();
+    };
+    btn.addEventListener('pointerdown', fire, true);
+    btn.addEventListener('mousedown', fire, true);
+    btn.addEventListener('click', fire, true);
+    btn.addEventListener('dblclick', fire, true);
+    bar.appendChild(btn);
+  }
+
+  root.append(drag, bar);
+  const mount = () => {
+    if (!document.body) return false;
+    document.body.appendChild(root);
+    return true;
   };
-  const run = (action) => {
-    if (action === 'min') void api.minimize();
-    else if (action === 'max') void api.maximize();
-    else if (action === 'close') void api.close();
-  };
-  const wire = (titlebar) => {
-    if (!titlebar || titlebar.dataset.dshCaptionWired === '1') return;
-    let buttons = Array.from(titlebar.querySelectorAll('[class*="TitlebarBtn"]'));
-    if (buttons.length < 3) {
-      buttons = Array.from(titlebar.querySelectorAll(':scope > span')).slice(-3);
-    }
-    if (buttons.length < 3) return;
-    const trio = buttons.slice(-3);
-    const actions = ['min', 'max', 'close'];
-    trio.forEach((btn, index) => {
-      const action = actionFor(btn) || actions[index];
-      btn.setAttribute('data-dsh-caption', action);
-      btn.style.webkitAppRegion = 'no-drag';
-      const fire = (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        run(action);
-      };
-      // pointerdown beats Electron drag-region click swallowing on caption spans.
-      btn.addEventListener('pointerdown', fire, true);
-      btn.addEventListener('click', fire, true);
-    });
-    titlebar.dataset.dshCaptionWired = '1';
-  };
-  const scan = () => {
-    document.querySelectorAll('[data-skin-chrome="titlebar"]').forEach(wire);
-  };
-  scan();
-  const observer = new MutationObserver(scan);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  if (!mount()) {
+    document.addEventListener('DOMContentLoaded', () => { mount(); }, { once: true });
+  }
 })()`
 
 let mainWindow: BrowserWindow | null = null
@@ -153,8 +181,11 @@ function hasOrigin(raw: string, expected: string): boolean {
 /** Install navigation and permission policy before the first renderer loads. */
 function hardenSession(): void {
   const desktopSession = session.defaultSession
-  desktopSession.setPermissionCheckHandler(() => false)
-  desktopSession.setPermissionRequestHandler((_webContents, _permission, callback) => { callback(false) })
+  const allow = new Set(['clipboard-read', 'clipboard-sanitized-write'])
+  desktopSession.setPermissionCheckHandler((_wc, permission) => allow.has(permission))
+  desktopSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+    callback(allow.has(permission))
+  })
 }
 
 function createWindow(): BrowserWindow {
