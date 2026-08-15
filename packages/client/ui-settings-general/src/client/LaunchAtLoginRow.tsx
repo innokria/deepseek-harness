@@ -7,24 +7,12 @@ import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots
 import { IconChevronDownOutline14, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import css from './LaunchAtLoginRow.module.css'
+import type { DshDesktopBridge, LaunchAtLoginState } from './dsh-desktop-bridge.ts'
 
-/** State returned by the desktop shell for this preference. */
-export interface LaunchAtLoginState {
-  enabled: boolean
-  available: boolean
-}
+export type { LaunchAtLoginState }
 
-/** Minimal desktop bridge surface used by this row. */
-interface DesktopLaunchAtLoginBridge {
-  getLaunchAtLogin: () => Promise<LaunchAtLoginState>
-  setLaunchAtLogin: (enabled: boolean) => Promise<LaunchAtLoginState>
-}
-
-declare global {
-  interface Window {
-    dshDesktop?: DesktopLaunchAtLoginBridge
-  }
-}
+/** Launch-at-login methods required after the preload probe succeeds. */
+type DesktopLaunchAtLoginBridge = Pick<DshDesktopBridge, 'getLaunchAtLogin' | 'setLaunchAtLogin'>
 
 /** Full component props: runtime share + locale seat. */
 export type LaunchAtLoginRowComponentProps =
@@ -41,7 +29,7 @@ export function readDesktopLaunchAtLoginBridge(): DesktopLaunchAtLoginBridge | u
   if (typeof bridge.getLaunchAtLogin !== 'function' || typeof bridge.setLaunchAtLogin !== 'function') {
     return undefined
   }
-  return bridge
+  return bridge as DesktopLaunchAtLoginBridge
 }
 
 /**

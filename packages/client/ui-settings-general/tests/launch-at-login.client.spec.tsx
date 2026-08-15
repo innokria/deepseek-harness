@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /** Desktop bridge detection and launch-at-login row smoke. */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
@@ -6,9 +7,12 @@ import {
   readDesktopLaunchAtLoginBridge,
 } from '../src/client/LaunchAtLoginRow.tsx'
 
+const unusedHook = (() => { throw new Error('unused by launch-at-login row') }) as never
+const kit = { useSessions: unusedHook, useWorkspaces: unusedHook }
+
 describe('readDesktopLaunchAtLoginBridge', () => {
   afterEach(() => {
-    delete (window as { dshDesktop?: unknown }).dshDesktop
+    delete window.dshDesktop
   })
 
   it('returns undefined when the preload bridge is absent', () => {
@@ -20,14 +24,14 @@ describe('readDesktopLaunchAtLoginBridge', () => {
       getLaunchAtLogin: vi.fn(async () => ({ enabled: false, available: true })),
       setLaunchAtLogin: vi.fn(async (enabled: boolean) => ({ enabled, available: true })),
     }
-    ;(window as { dshDesktop?: typeof bridge }).dshDesktop = bridge
+    window.dshDesktop = bridge
     expect(readDesktopLaunchAtLoginBridge()).toBe(bridge)
   })
 })
 
 describe('LaunchAtLoginRow', () => {
   beforeEach(() => {
-    ;(window as { dshDesktop?: unknown }).dshDesktop = {
+    window.dshDesktop = {
       getLaunchAtLogin: vi.fn(async () => ({ enabled: false, available: true })),
       setLaunchAtLogin: vi.fn(async (enabled: boolean) => ({ enabled, available: true })),
     }
@@ -35,7 +39,7 @@ describe('LaunchAtLoginRow', () => {
 
   afterEach(() => {
     cleanup()
-    delete (window as { dshDesktop?: unknown }).dshDesktop
+    delete window.dshDesktop
   })
 
   it('renders the 开机自启 row defaulting to 否', async () => {
@@ -46,7 +50,7 @@ describe('LaunchAtLoginRow', () => {
       'launchAtLogin.no': '否',
     }[key] ?? key)
 
-    render(<LaunchAtLoginRow t={t as never} />)
+    render(<LaunchAtLoginRow {...kit} t={t as never} />)
     expect(await screen.findByText('开机自启')).toBeTruthy()
     expect(screen.getByRole('button', { name: /否/ })).toBeTruthy()
   })

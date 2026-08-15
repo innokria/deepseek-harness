@@ -7,19 +7,12 @@ import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots
 import { IconChevronDownOutline14, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import css from './LaunchAtLoginRow.module.css'
+import type { DshDesktopBridge, NotificationsState } from './dsh-desktop-bridge.ts'
 
-/** State returned by the desktop shell for this preference. */
-export interface NotificationsState {
-  enabled: boolean
-}
+export type { NotificationsState }
 
-/** Minimal desktop bridge surface used by this row. */
-interface DesktopNotificationsBridge {
-  getNotifications: () => Promise<NotificationsState>
-  setNotifications: (enabled: boolean) => Promise<NotificationsState>
-}
-
-type WindowWithNotifications = Window & { dshDesktop?: DesktopNotificationsBridge }
+/** Notification methods required after the preload probe succeeds. */
+type DesktopNotificationsBridge = Pick<DshDesktopBridge, 'getNotifications' | 'setNotifications'>
 
 /** Full component props: runtime share + locale seat. */
 export type NotificationsRowComponentProps =
@@ -31,12 +24,12 @@ export type NotificationsRowComponentProps =
  */
 export function readDesktopNotificationsBridge(): DesktopNotificationsBridge | undefined {
   if (typeof window === 'undefined') return undefined
-  const bridge = (window as WindowWithNotifications).dshDesktop
+  const bridge = window.dshDesktop
   if (bridge === undefined) return undefined
   if (typeof bridge.getNotifications !== 'function' || typeof bridge.setNotifications !== 'function') {
     return undefined
   }
-  return bridge
+  return bridge as DesktopNotificationsBridge
 }
 
 /**
