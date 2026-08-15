@@ -7,6 +7,18 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('dshDesktop', {
   platform: process.platform,
   electron: process.versions.electron,
+  /** Minimize the shell window (frameless Windows caption). */
+  minimize() {
+    return ipcRenderer.invoke('dsh:window-minimize')
+  },
+  /** Toggle maximize / restore. */
+  maximize() {
+    return ipcRenderer.invoke('dsh:window-maximize')
+  },
+  /** Close the shell window (hides to tray unless quitting). */
+  close() {
+    return ipcRenderer.invoke('dsh:window-close')
+  },
   /**
    * Subscribe to deep-link delivery (a `dsh://…` URL). Returns an unsubscribe
    * function; the callback receives the full URL string.
