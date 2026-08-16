@@ -16,6 +16,10 @@ export const zh = {
   'notifications.description': '服务意外退出、反复崩溃或恢复时弹出系统提示（默认开启）',
   'notifications.yes': '是',
   'notifications.no': '否',
+  'closeBehavior.title': '关闭窗口时',
+  'closeBehavior.description': '选择 DeepSeek Harness 在主窗口关闭后是否继续运行',
+  'closeBehavior.keepRunning': '保持运行',
+  'closeBehavior.quit': '退出',
 } satisfies Record<string, string>
 
 /** The settings namespace key union. */
@@ -37,4 +41,8 @@ export const en = {
   'notifications.description': 'Show a system toast when the service crashes, keeps failing, or recovers (on by default)',
   'notifications.yes': 'Yes',
   'notifications.no': 'No',
+  'closeBehavior.title': 'When closing window',
+  'closeBehavior.description': 'Choose whether DeepSeek Harness keeps running after its main window closes.',
+  'closeBehavior.keepRunning': 'Keep running',
+  'closeBehavior.quit': 'Quit',
 } satisfies Record<SettingsKey, string>

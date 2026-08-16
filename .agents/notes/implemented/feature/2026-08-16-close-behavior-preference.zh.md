@@ -26,6 +26,7 @@ Status: implemented
 - 默认行为不变：在插件或用户选择退出之前，关闭窗口仍然隐藏到托盘。
 - 退出路径复用 `requestQuit()`，因此 Host 处置与退出释放与托盘菜单退出完全一致；关闭即退出发生在进行中的拆除期间时，由既有的 `pendingQuit` 单飞机制合并。
 - 渲染层插件获得了一等公民、对称的 API，而不再越界读取壳的状态。
+- Web 客户端的通用设置现在提供「关闭窗口时」行（保持运行 / 退出），通过 `window.dshDesktop.getCloseBehavior()/setCloseBehavior()` 驱动该偏好，与更早的桌面功能 PR 加入的开机自启和系统通知行一致。
 
 ## 备选方案
 

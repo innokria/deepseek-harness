@@ -26,6 +26,7 @@ A plugin (for example a settings page) calls `setCloseBehavior('quit')` and the 
 - The default is unchanged: closing the window still hides to the tray until a plugin or user opts into quit.
 - The quit path reuses `requestQuit()`, so Host disposal and quit release are identical to tray-menu quit; a quit-on-close during an in-flight teardown is coalesced by the existing `pendingQuit` single-flight.
 - Renderer plugins gain a first-class, symmetric API instead of reading shell state out of band.
+- The web client's General settings now exposes a "When closing window" row (Keep running / Quit) that drives the preference through `window.dshDesktop.getCloseBehavior()/setCloseBehavior()`, mirroring the launch-at-login and notifications rows added by the earlier desktop-features PR.
 
 ## Alternatives considered
 
