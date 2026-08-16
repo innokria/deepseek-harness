@@ -1,6 +1,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
+/** What an ordinary window close does: hide to the tray or quit the app. */
+export type CloseBehavior = 'tray' | 'quit'
+
 /** User-tunable desktop shell preferences persisted under `userData`. */
 export interface DesktopPreferences {
   /** Allow the shell to raise native notifications. */
@@ -10,11 +13,14 @@ export interface DesktopPreferences {
    * off; unpackaged Electron builds never apply this to the OS.
    */
   launchAtLoginEnabled: boolean
+  /** What closing the window does: hide to the tray (default) or quit. */
+  closeBehavior: CloseBehavior
 }
 
 export const DEFAULT_PREFERENCES: DesktopPreferences = Object.freeze({
   notificationsEnabled: true,
   launchAtLoginEnabled: false,
+  closeBehavior: 'tray',
 })
 
 /**
@@ -31,6 +37,9 @@ export function normalizePreferences(raw: unknown): DesktopPreferences {
     launchAtLoginEnabled: typeof source.launchAtLoginEnabled === 'boolean'
       ? source.launchAtLoginEnabled
       : DEFAULT_PREFERENCES.launchAtLoginEnabled,
+    closeBehavior: source.closeBehavior === 'tray' || source.closeBehavior === 'quit'
+      ? source.closeBehavior
+      : DEFAULT_PREFERENCES.closeBehavior,
   }
 }
 

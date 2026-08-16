@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   setLaunchAtLogin(enabled) { return ipcRenderer.invoke('dsh:launch-at-login-set', Boolean(enabled)) },
   getNotifications() { return ipcRenderer.invoke('dsh:notifications-get') },
   setNotifications(enabled) { return ipcRenderer.invoke('dsh:notifications-set', Boolean(enabled)) },
+  getCloseBehavior() { return ipcRenderer.invoke('dsh:close-behavior-get') },
+  setCloseBehavior(behavior) { return ipcRenderer.invoke('dsh:close-behavior-set', behavior === 'quit' ? 'quit' : 'tray') },
   onDeepLink(callback) {
     if (typeof callback !== 'function') return () => {}
     const listener = (_event, url) => callback(url)

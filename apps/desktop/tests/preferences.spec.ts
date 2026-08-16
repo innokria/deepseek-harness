@@ -18,24 +18,29 @@ describe('desktop preferences normalization', () => {
     { notificationsEnabled: 'yes' },
     { notificationsEnabled: 1 },
     { launchAtLoginEnabled: 'yes' },
+    { closeBehavior: 'minimize' },
+    { closeBehavior: 1 },
   ])('falls back to defaults for %o', (raw) => {
     expect(normalizePreferences(raw)).toEqual(DEFAULT_PREFERENCES)
   })
 
-  it('keeps explicit boolean values', () => {
+  it('keeps explicit boolean values and a valid close behavior', () => {
     expect(normalizePreferences({
       notificationsEnabled: false,
       launchAtLoginEnabled: true,
+      closeBehavior: 'quit',
     })).toEqual({
       notificationsEnabled: false,
       launchAtLoginEnabled: true,
+      closeBehavior: 'quit',
     })
   })
 
-  it('defaults launchAtLoginEnabled to false when omitted', () => {
+  it('defaults launchAtLoginEnabled to false and closeBehavior to tray when omitted', () => {
     expect(normalizePreferences({ notificationsEnabled: false })).toEqual({
       notificationsEnabled: false,
       launchAtLoginEnabled: false,
+      closeBehavior: 'tray',
     })
   })
 
@@ -43,10 +48,12 @@ describe('desktop preferences normalization', () => {
     expect(normalizePreferences({
       notificationsEnabled: false,
       launchAtLoginEnabled: false,
+      closeBehavior: 'tray',
       extra: 'junk',
     })).toEqual({
       notificationsEnabled: false,
       launchAtLoginEnabled: false,
+      closeBehavior: 'tray',
     })
   })
 })
@@ -58,10 +65,15 @@ describe('desktop preferences store', () => {
       const store = createPreferencesStore(join(dir, 'preferences.json'))
       expect(store.read()).toEqual(DEFAULT_PREFERENCES)
 
-      store.write({ notificationsEnabled: false, launchAtLoginEnabled: true })
+      store.write({
+        notificationsEnabled: false,
+        launchAtLoginEnabled: true,
+        closeBehavior: 'quit',
+      })
       expect(store.read()).toEqual({
         notificationsEnabled: false,
         launchAtLoginEnabled: true,
+        closeBehavior: 'quit',
       })
     } finally {
       await rm(dir, { recursive: true, force: true })
