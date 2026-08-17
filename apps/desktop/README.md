@@ -50,6 +50,7 @@ DeepSeek Harness already provides the complete agent runtime and Web GUI. The sh
 ## Features
 
 - Opens directly into the harness Web GUI, showing a connecting page until the child reports ready.
+- Tray menu always exposes "Open log", which reveals `harness.log` in the OS file manager; the connecting page adds the same button once startup has waited past `DSH_DESKTOP_CONNECTING_TIMEOUT_MS` so a stalled start is debuggable from the visible window.
 - Holds a single-instance lock; a second launch focuses the existing window.
 - Restarts the harness on unexpected exit with exponential backoff.
 - Stops the child gracefully on exit (SIGTERM, then SIGKILL after a timeout).
@@ -126,6 +127,7 @@ A tag-triggered workflow ([desktop-release.yml](../../.github/workflows/desktop-
 | `DSH_DESKTOP_DSH_BIN` | unset | Development launcher when the bundle is absent; falls back to the repository's built CLI. |
 | `DSH_DESKTOP_PORT` | `0` | `dsh web --port` value; `0` lets the OS pick a free port. |
 | `DSH_DESKTOP_LOG_DIR` | platform log dir | Directory for the child's combined `harness.log`. |
+| `DSH_DESKTOP_CONNECTING_TIMEOUT_MS` | `15000` | How long the connecting placeholder waits before adding the "Open log" button, in milliseconds. |
 | `DSH_DESKTOP_NODE_VERSION` | `v22.19.0` | Node version `prepare:runtime` downloads. |
 | `DSH_DESKTOP_ARCH` | `process.arch` | Architecture of the Node runtime `prepare:runtime` stages; overrides the host arch for a cross-build. |
 | `DSH_DESKTOP_UPDATE_INTERVAL_MS` | `14400000` | Interval between auto-update background re-checks, in milliseconds. |
@@ -134,7 +136,7 @@ The child's stdout/stderr go to `harness.log`; the readiness line (`dsh web: htt
 
 ## Security posture
 
-`contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. The preload (`preload.cjs`) exposes `platform`, the Electron version, window controls, launch-at-login / notification preferences, a deep-link subscription, and a narrow update bridge (status read/subscribe, check, install). Host access stays on the existing loopback `/api` fence; the preload re-exposes no privileged host method.
+`contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. The preload (`preload.cjs`) exposes `platform`, the Electron version, window controls, launch-at-login / notification preferences, a deep-link subscription, `openLog()` (reveals the configured `harness.log`; no arbitrary path), and a narrow update bridge (status read/subscribe, check, install). Host access stays on the existing loopback `/api` fence; the preload re-exposes no privileged host method.
 
 ## Known limitations
 

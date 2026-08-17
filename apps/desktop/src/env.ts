@@ -25,15 +25,25 @@ export interface DesktopEnv {
   killTimeoutMs: number
   /** Interval between auto-update background re-checks, in milliseconds. */
   updateCheckIntervalMs: number
+  /**
+   * How long the connecting placeholder waits before adding the
+   * "open log" button. The harness readiness line still wins when it
+   * arrives, so the window stays patient until then.
+   */
+  connectingTimeoutMs: number
 }
 
 const DSH_BIN_ENV = 'DSH_DESKTOP_DSH_BIN'
 const PORT_ENV = 'DSH_DESKTOP_PORT'
 const LOG_DIR_ENV = 'DSH_DESKTOP_LOG_DIR'
 const UPDATE_INTERVAL_ENV = 'DSH_DESKTOP_UPDATE_INTERVAL_MS'
+const CONNECTING_TIMEOUT_ENV = 'DSH_DESKTOP_CONNECTING_TIMEOUT_MS'
 
 /** Background re-check interval: once every four hours by default. */
 const DEFAULT_UPDATE_INTERVAL_MS = 4 * 60 * 60 * 1000
+
+/** Default value of {@link DesktopEnv.connectingTimeoutMs} (15 seconds). */
+const DEFAULT_CONNECTING_TIMEOUT_MS = 15_000
 
 /** Parse a positive-integer environment override, falling back on a default. */
 function positiveInt(raw: string | undefined, fallback: number): number {
@@ -108,5 +118,9 @@ export function resolveDesktopEnv(resourceRoot: string): DesktopEnv {
     maxRestartDelayMs: 10000,
     killTimeoutMs: 5000,
     updateCheckIntervalMs: positiveInt(process.env[UPDATE_INTERVAL_ENV], DEFAULT_UPDATE_INTERVAL_MS),
+    connectingTimeoutMs: positiveInt(
+      process.env[CONNECTING_TIMEOUT_ENV],
+      DEFAULT_CONNECTING_TIMEOUT_MS,
+    ),
   }
 }

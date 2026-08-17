@@ -15,7 +15,7 @@ import {
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { HarnessSupervisor } from './harness.ts'
-import { resolveDesktopEnv } from './env.ts'
+import { resolveDesktopEnv, type DesktopEnv } from './env.ts'
 import { UpdateController } from './update.ts'
 import type { UpdateStatus } from './update-status.ts'
 import { createDesktopLifecycle, type DesktopLifecycle } from './window-lifecycle.ts'
@@ -28,22 +28,30 @@ import {
   type NotificationSink,
 } from './notifications.ts'
 import { createPreferencesStore, DEFAULT_PREFERENCES, type PreferencesStore } from './preferences.ts'
+import {
+  detectConnectingLocale,
+  renderConnectingPage,
+  type ConnectingLocale,
+} from './connecting-page.ts'
+import { revealLogFile, type LogRevealShell } from './log.ts'
 
 const APP_NAME = 'DeepSeek Harness'
 
 /** Deep-link scheme the shell forwards to the renderer untouched. */
 const DEEP_LINK_PREFIX = 'dsh://'
 
-/** Minimal connecting page shown before the harness reports readiness. */
-const CONNECTING_HTML = `<!doctype html>
-<meta charset="utf-8">
-<title>DeepSeek Harness</title>
-<style>
-  body { margin: 0; display: grid; place-items: center; height: 100vh;
-         font: 14px/1.5 system-ui, -apple-system, sans-serif; color: #9aa0a6;
-         background: #1f2328; -webkit-app-region: drag; }
-</style>
-<p>正在启动 DeepSeek Harness…</p>`
+/** IPC channel the connecting page uses to ask the main process to reveal `harness.log`. */
+const OPEN_LOG_CHANNEL = 'dsh:open-log'
+
+/**
+ * Wrap Electron's `shell` into the {@link LogRevealShell} shape the pure
+ * `revealLogFile` helper expects, so production code and tests share the
+ * same call site.
+ */
+const logRevealShell: LogRevealShell = {
+  showItemInFolder: (path) => { shell.showItemInFolder(path) },
+  openPath: path => shell.openPath(path),
+}
 
 
 /**
@@ -225,6 +233,10 @@ let pendingDeepLink: string | null = null
 let preferencesStore: PreferencesStore | null = null
 let notificationsEnabled = DEFAULT_PREFERENCES.notificationsEnabled
 let hiddenLaunch = false
+let connectingTimer: NodeJS.Timeout | null = null
+let connectingLocale: ConnectingLocale = 'en'
+/** Resolved shell env; populated during `boot` and read by IPC handlers. */
+let currentEnv: DesktopEnv | null = null
 
 /** Status reported while no updater exists (development or non-packaged runs). */
 const UNSUPPORTED_STATUS: UpdateStatus = { phase: 'unsupported' }
@@ -425,20 +437,68 @@ function registerWindowControlIpc(): void {
   ipcMain.handle('dsh:notifications-set', (_event, enabled: unknown): NotificationsPrefState => (
     writeNotificationsEnabled(enabled === true)
   ))
+  ipcMain.handle(OPEN_LOG_CHANNEL, () => handleOpenLog())
 }
 
 /** Load the harness origin, or the connecting page when it is not ready yet. */
 function loadWindow(win: BrowserWindow): void {
   const url = supervisor?.url
   if (url === null || url === undefined) {
-    void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(CONNECTING_HTML)}`)
+    // Start (or restart) the per-window connecting timer. A `restart` event
+    // also lands here, so the timer resets every time the page reloads.
+    showConnecting(win)
   } else {
+    clearConnectingTimer()
     // Mark the renderer so the Web GUI can reserve title-bar space under
     // frameless window controls (macOS traffic lights sit over the sidebar).
     const rendererUrl = new URL(url)
     rendererUrl.searchParams.set('dsh-desktop-platform', process.platform)
     void win.loadURL(rendererUrl.href)
   }
+}
+
+/** Cancel the connecting placeholder's pending timeout, if any. */
+function clearConnectingTimer(): void {
+  if (connectingTimer !== null) {
+    clearTimeout(connectingTimer)
+    connectingTimer = null
+  }
+}
+
+/**
+ * Render the connecting page in `timedOut: false` state and arm a per-window
+ * timer that re-renders it in `timedOut: true` once the harness has not
+ * reported ready after {@link DesktopEnv.connectingTimeoutMs}. The harness
+ * supervisor's `ready` event still cancels this and loads the origin.
+ *
+ * The timeout callback re-checks `supervisor.url` before swapping copy: a
+ * `ready` that arrives after the timer has fired but before the callback
+ * runs must still win, otherwise the stalled placeholder would overlay the
+ * already-loaded GUI.
+ *
+ * @param win - The shell's main window; a destroyed one is a no-op.
+ */
+function showConnecting(win: BrowserWindow): void {
+  clearConnectingTimer()
+  const html = renderConnectingPage({ locale: connectingLocale, timedOut: false })
+  void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+  const env = currentEnv
+  if (env === null) return
+  connectingTimer = setTimeout(() => {
+    connectingTimer = null
+    if (win.isDestroyed()) return
+    if (supervisor?.url !== null && supervisor?.url !== undefined) return
+    const stalled = renderConnectingPage({ locale: connectingLocale, timedOut: true })
+    void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(stalled)}`)
+  }, env.connectingTimeoutMs)
+}
+
+/** IPC handler: reveal the harness log file in the OS file manager. */
+async function handleOpenLog(): Promise<{ kind: 'file' | 'directory'; error: string }> {
+  const env = currentEnv
+  if (env === null) return { kind: 'directory', error: 'desktop env is not resolved' }
+  const result = await revealLogFile(env.logFile, logRevealShell, existsSync(env.logFile))
+  return { kind: result.action.kind === 'show-item-in-folder' ? 'file' : 'directory', error: result.error }
 }
 
 function deliverDeepLink(url: string): void {
@@ -489,6 +549,10 @@ function buildTrayMenu(): Menu {
   const launchAtLogin = readLaunchAtLoginState()
   const template: MenuItemConstructorOptions[] = [
     { label: 'Open Window', click: () => { void lifecycle?.showWindow() } },
+    {
+      label: 'Open log',
+      click: () => { void handleOpenLog() },
+    },
     { type: 'separator' },
     {
       label: 'Launch at login',
@@ -586,6 +650,8 @@ async function boot(): Promise<void> {
   registerUpdaterIpc()
   const resourceRoot = app.isPackaged ? process.resourcesPath : app.getAppPath()
   const env = resolveDesktopEnv(resourceRoot)
+  currentEnv = env
+  connectingLocale = detectConnectingLocale(app.getLocale())
   const sup = new HarnessSupervisor(env.launch.command, env.launch.args, {
     logFile: env.logFile,
     restartDelayMs: env.restartDelayMs,
@@ -608,10 +674,9 @@ async function boot(): Promise<void> {
   sup.on('restart', ({ attempt }) => {
     crashed = true
     // An unexpected exit killed the old origin; return to connecting until the
-    // next child reports ready.
-    if (mainWindow !== null && !mainWindow.isDestroyed()) {
-      void mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(CONNECTING_HTML)}`)
-    }
+    // next child reports ready. `loadWindow` resets the connecting timer so
+    // a slow restart still gets its full per-window timeout.
+    if (mainWindow !== null && !mainWindow.isDestroyed()) loadWindow(mainWindow)
     if (notificationsEnabled) {
       const rule = restartNotificationFor(attempt)
       if (rule !== undefined && notificationThrottle.allow(rule.key, Date.now())) {
