@@ -1190,6 +1190,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       'client-ui-permission-presets PermissionRow id \'permission\'',
       'client-ui-settings-general LaunchAtLoginRow id \'launch-at-login\'',
       'client-ui-settings-general NotificationsRow id \'system-notifications\'',
+      'client-ui-settings-general CloseBehaviorRow id \'close-behavior\'',
       'client-ui-theme AppearanceRow id \'appearance\'',
     ],
     replaceRisk: 'none',
