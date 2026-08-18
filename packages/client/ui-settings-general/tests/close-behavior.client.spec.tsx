@@ -21,7 +21,7 @@ describe('readDesktopCloseBehaviorBridge', () => {
 
   it('returns the bridge when get/set helpers exist', () => {
     const bridge = {
-      getCloseBehavior: vi.fn(async () => ({ behavior: 'tray' })),
+      getCloseBehavior: vi.fn(async () => ({ behavior: 'tray' as const })),
       setCloseBehavior: vi.fn(async (behavior: 'tray' | 'quit') => ({ behavior })),
     }
     window.dshDesktop = bridge
@@ -32,7 +32,7 @@ describe('readDesktopCloseBehaviorBridge', () => {
 describe('CloseBehaviorRow', () => {
   beforeEach(() => {
     window.dshDesktop = {
-      getCloseBehavior: vi.fn(async () => ({ behavior: 'tray' })),
+      getCloseBehavior: vi.fn(async () => ({ behavior: 'tray' as const })),
       setCloseBehavior: vi.fn(async (behavior: 'tray' | 'quit') => ({ behavior })),
     }
   })
