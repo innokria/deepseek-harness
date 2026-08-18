@@ -134,7 +134,7 @@ The child's stdout/stderr go to `harness.log`; the readiness line (`dsh web: htt
 
 ## Security posture
 
-`contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. The preload (`preload.cjs`) exposes `platform`, the Electron version, window controls, launch-at-login / notification preferences, a deep-link subscription, and a narrow update bridge (status read/subscribe, check, install). Host access stays on the existing loopback `/api` fence; the preload re-exposes no privileged host method.
+`contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. The preload (`preload.cjs`) exposes `platform`, the Electron version, window controls, launch-at-login / notification / close-behavior preferences, a deep-link subscription, and a narrow update bridge (status read/subscribe, check, install). Close behavior (`tray` or `quit`) decides whether closing the window hides to the tray or quits the application. Host access stays on the existing loopback `/api` fence; the preload re-exposes no privileged host method.
 
 ## Known limitations
 

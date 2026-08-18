@@ -1,4 +1,5 @@
 /** Desktop window and application lifetime independent from Electron imports. */
+import type { CloseBehavior } from './preferences.ts'
 
 /** Minimal close event accepted by the desktop lifecycle. */
 export interface WindowCloseEvent {
@@ -32,6 +33,12 @@ export interface DesktopLifecycleOptions {
   readonly quit: () => void
   /** Report a teardown failure before the retry is released. */
   readonly reportError?: (error: unknown) => void
+  /**
+   * Resolve what an ordinary window close does: `tray` hides the window
+   * without disposing the Host, `quit` runs the full quit sequence.
+   * Absent, closes hide to the tray (the historical default).
+   */
+  readonly readCloseBehavior?: () => CloseBehavior
 }
 
 /** Public controller for close, restore and explicit quit events. */
@@ -85,6 +92,10 @@ export function createDesktopLifecycle(options: DesktopLifecycleOptions): Deskto
     get pendingQuit() { return pendingQuit },
     onWindowClose(event) {
       if (quitting) return
+      if (options.readCloseBehavior?.() === 'quit') {
+        void requestQuit()
+        return
+      }
       event.preventDefault()
       options.getWindow()?.hide()
     },

@@ -56,6 +56,48 @@ describe('desktop window lifecycle', () => {
     expect(lifecycle.isQuitting).toBe(false)
   })
 
+  it('quits the app when the close behavior is quit', async () => {
+    const window = fakeWindow()
+    const preventDefault = vi.fn()
+    const disposeHost = vi.fn(() => Promise.resolve())
+    const quit = vi.fn()
+    const lifecycle = createDesktopLifecycle({
+      getWindow: () => window,
+      createWindow: () => Promise.resolve(window),
+      disposeHost,
+      quit,
+      readCloseBehavior: () => 'quit',
+    })
+
+    lifecycle.onWindowClose({ preventDefault })
+
+    expect(preventDefault).not.toHaveBeenCalled()
+    expect(window.hide).not.toHaveBeenCalled()
+    expect(disposeHost).toHaveBeenCalledOnce()
+    await lifecycle.pendingQuit
+    expect(quit).toHaveBeenCalledOnce()
+    expect(lifecycle.isQuitting).toBe(true)
+  })
+
+  it('hides to the tray when the close behavior is tray', () => {
+    const window = fakeWindow()
+    const preventDefault = vi.fn()
+    const disposeHost = vi.fn(() => Promise.resolve())
+    const lifecycle = createDesktopLifecycle({
+      getWindow: () => window,
+      createWindow: () => Promise.resolve(window),
+      disposeHost,
+      quit: vi.fn(),
+      readCloseBehavior: () => 'tray',
+    })
+
+    lifecycle.onWindowClose({ preventDefault })
+
+    expect(preventDefault).toHaveBeenCalledOnce()
+    expect(window.hide).toHaveBeenCalledOnce()
+    expect(disposeHost).not.toHaveBeenCalled()
+  })
+
   it('restores and focuses the existing hidden window', async () => {
     const window = fakeWindow({ visible: false })
     const createWindow = vi.fn(() => Promise.resolve(window))
