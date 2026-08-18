@@ -50,6 +50,7 @@ DeepSeek Harness 已经提供完整的 agent 运行时与 Web GUI。这个壳不
 ## 特性
 
 - 直接打开 harness 的 Web GUI，在子进程报告就绪前显示连接中页面。
+- 托盘菜单始终提供「Open log」，在系统文件管理器中定位 `harness.log`；连接中页面在等待超过 `DSH_DESKTOP_CONNECTING_TIMEOUT_MS` 后显示同一按钮，启动卡住时可以从当前窗口排查。
 - 持有单实例锁；第二次启动会聚焦已有窗口。
 - 在意外退出后以指数退避重启 harness。
 - 退出时优雅关闭子进程（先 SIGTERM，超时后 SIGKILL）。
@@ -126,6 +127,7 @@ electron-builder 通过 `extraResources` 把两者复制进 `resources/`。启�
 | `DSH_DESKTOP_DSH_BIN` | 未设置 | 捆绑包缺失时的开发启动器；回退到仓库已构建的 CLI。 |
 | `DSH_DESKTOP_PORT` | `0` | `dsh web --port` 的值；`0` 让操作系统挑选空闲端口。 |
 | `DSH_DESKTOP_LOG_DIR` | 平台日志目录 | 子进程合并的 `harness.log` 所在目录。 |
+| `DSH_DESKTOP_CONNECTING_TIMEOUT_MS` | `15000` | 连接中占位页等待多久后显示「打开日志」按钮，单位毫秒。 |
 | `DSH_DESKTOP_NODE_VERSION` | `v22.19.0` | `prepare:runtime` 下载的 Node 版本。 |
 | `DSH_DESKTOP_ARCH` | `process.arch` | `prepare:runtime` 暂存的 Node 运行时架构；跨架构构建时覆盖宿主机架构。 |
 | `DSH_DESKTOP_UPDATE_INTERVAL_MS` | `14400000` | 自动更新后台复查的间隔，单位毫秒。 |
@@ -134,7 +136,7 @@ electron-builder 通过 `extraResources` 把两者复制进 `resources/`。启�
 
 ## 安全态势
 
-`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`。preload（`preload.cjs`）暴露 `platform`、Electron 版本、窗口控制、开机自启 / 系统通知 / 关闭行为偏好、一个深链订阅与一个窄更新桥（状态读取/订阅、检查、安装）。关闭行为（`tray` 或 `quit`）决定关闭窗口是隐藏到托盘还是退出应用。宿主访问仍走既有的 loopback `/api` 围栏；preload 不重新暴露任何特权宿主方法。
+`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`。preload（`preload.cjs`）暴露 `platform`、Electron 版本、窗口控制、开机自启 / 系统通知 / 关闭行为偏好、一个深链订阅、`openLog()`（只打开配置好的 `harness.log`，不接受任意路径）与一个窄更新桥（状态读取/订阅、检查、安装）。关闭行为（`tray` 或 `quit`）决定关闭窗口是隐藏到托盘还是退出应用。宿主访问仍走既有的 loopback `/api` 围栏；preload 不重新暴露任何特权宿主方法。
 
 ## 已知限制
 

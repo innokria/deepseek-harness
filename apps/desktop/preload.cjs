@@ -11,6 +11,18 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   setLaunchAtLogin(enabled) { return ipcRenderer.invoke('dsh:launch-at-login-set', Boolean(enabled)) },
   getNotifications() { return ipcRenderer.invoke('dsh:notifications-get') },
   setNotifications(enabled) { return ipcRenderer.invoke('dsh:notifications-set', Boolean(enabled)) },
+  /**
+   * Ask the main process to reveal `harness.log` in the OS file manager.
+   * The connecting placeholder's "Open log" button calls this when its
+   * startup-timeout copy is showing. Returns `{ kind: 'file' | 'directory',
+   * error }` — `kind: 'file'` when the log exists and was highlighted in
+   * the file manager, `'directory'` when the log was missing and the parent
+   * directory was opened instead. `error` is non-empty when the reveal
+   * failed; the main process also shows a native dialog in that case.
+   */
+  openLog() {
+    return ipcRenderer.invoke('dsh:open-log')
+  },
   getCloseBehavior() { return ipcRenderer.invoke('dsh:close-behavior-get') },
   setCloseBehavior(behavior) { return ipcRenderer.invoke('dsh:close-behavior-set', behavior === 'quit' ? 'quit' : 'tray') },
   onDeepLink(callback) {
