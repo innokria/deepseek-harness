@@ -17,8 +17,8 @@ contextBridge.exposeInMainWorld('dshDesktop', {
    * startup-timeout copy is showing. Returns `{ kind: 'file' | 'directory',
    * error }` — `kind: 'file'` when the log exists and was highlighted in
    * the file manager, `'directory'` when the log was missing and the parent
-   * directory was opened instead. `error` is non-empty only on a parent-open
-   * failure.
+   * directory was opened instead. `error` is non-empty when the reveal
+   * failed; the main process also shows a native dialog in that case.
    */
   openLog() {
     return ipcRenderer.invoke('dsh:open-log')

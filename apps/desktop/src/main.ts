@@ -250,7 +250,7 @@ function resolveAppIcon(): string | undefined {
   const candidates = app.isPackaged
     ? [join(process.resourcesPath, 'desktop-resources', 'icon.png')]
     : [join(app.getAppPath(), 'build', 'icon.png'), join(app.getAppPath(), 'resources', 'icon.png')]
-  return candidates.find((candidate) => existsSync(candidate))
+  return candidates.find(candidate => existsSync(candidate))
 }
 
 /** Load the tray glyph: macOS template PNG, Windows branded icon, empty fallback. */
@@ -498,6 +498,15 @@ async function handleOpenLog(): Promise<{ kind: 'file' | 'directory'; error: str
   const env = currentEnv
   if (env === null) return { kind: 'directory', error: 'desktop env is not resolved' }
   const result = await revealLogFile(env.logFile, logRevealShell, existsSync(env.logFile))
+  if (result.error !== '') {
+    // Both callers (the tray item and the connecting-page button) route here
+    // and have no UI of their own, so surface the failure as a native dialog.
+    void dialog.showMessageBox({
+      type: 'error',
+      title: `${APP_NAME}: open log`,
+      message: result.error,
+    })
+  }
   return { kind: result.action.kind === 'show-item-in-folder' ? 'file' : 'directory', error: result.error }
 }
 

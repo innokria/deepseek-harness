@@ -1,5 +1,5 @@
 import { dirname } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   detectConnectingLocale,
   renderConnectingPage,
@@ -121,28 +121,39 @@ describe('revealLogFile (integration with injected shell)', () => {
 
     expect(result.error).toBe('parent does not exist')
   })
+
+  it('returns the showItemInFolder failure when highlighting throws', async () => {
+    const logFile = '/Users/me/Library/Logs/dsh-desktop/harness.log'
+    const shell: LogRevealShell = {
+      showItemInFolder: vi.fn<(path: string) => void>().mockImplementation(() => {
+        throw new Error('file manager unavailable')
+      }),
+      openPath: vi.fn<(path: string) => Promise<string>>().mockResolvedValue(''),
+    }
+
+    const result = await revealLogFile(logFile, shell, true)
+
+    expect(result.action).toEqual({ kind: 'show-item-in-folder', path: logFile })
+    expect(result.error).toBe('file manager unavailable')
+    expect(shell.openPath).not.toHaveBeenCalled()
+  })
 })
 
 describe('resolveDesktopEnv (connecting-timeout override)', () => {
   const KEY = 'DSH_DESKTOP_CONNECTING_TIMEOUT_MS'
-  let previous: string | undefined
 
-  beforeEach(() => {
-    previous = process.env[KEY]
-  })
   afterEach(() => {
-    if (previous === undefined) delete process.env[KEY]
-    else process.env[KEY] = previous
+    vi.unstubAllEnvs()
   })
 
   it('defaults to 15000 ms when the env var is unset', () => {
-    delete process.env[KEY]
+    vi.stubEnv(KEY, undefined)
     const env = resolveDesktopEnv('/irrelevant')
     expect(env.connectingTimeoutMs).toBe(15_000)
   })
 
   it('parses a positive override with the same helper as other desktop env vars', () => {
-    process.env[KEY] = '30000'
+    vi.stubEnv(KEY, '30000')
     const env = resolveDesktopEnv('/irrelevant')
     expect(env.connectingTimeoutMs).toBe(30_000)
   })
@@ -153,7 +164,7 @@ describe('resolveDesktopEnv (connecting-timeout override)', () => {
     ['abc', 15_000],
     ['', 15_000],
   ])('falls back to the default when the value %s is not a positive number', (raw, expected) => {
-    process.env[KEY] = raw
+    vi.stubEnv(KEY, raw)
     const env = resolveDesktopEnv('/irrelevant')
     expect(env.connectingTimeoutMs).toBe(expected)
   })

@@ -36,7 +36,7 @@ export function planLogReveal(logFile: string, fileExists: boolean): LogRevealAc
 
 /** Electron shell operations the reveal needs. */
 export interface LogRevealShell {
-  /** Synchronous reveal of one file in the OS file manager. */
+  /** Synchronous reveal of one file in the OS file manager; throws on failure. */
   showItemInFolder(path: string): void
   /**
    * Open a path in the OS file manager. Resolves with an empty string on
@@ -49,7 +49,7 @@ export interface LogRevealShell {
 export interface LogRevealResult {
   /** The action that was actually taken. */
   action: LogRevealAction
-  /** Empty on success, otherwise the error from `shell.openPath`. */
+  /** Empty on success, otherwise the failure from `showItemInFolder` or `openPath`. */
   error: string
 }
 
@@ -59,7 +59,7 @@ export interface LogRevealResult {
  * @param logFile - Absolute path to `harness.log`.
  * @param shell - Electron shell operations (injected for tests).
  * @param fileExists - Whether the log file is currently on disk (injected).
- * @returns The action that ran and any error from `openPath`.
+ * @returns The action that ran and any error from the reveal.
  */
 export async function revealLogFile(
   logFile: string,
@@ -68,8 +68,12 @@ export async function revealLogFile(
 ): Promise<LogRevealResult> {
   const action = planLogReveal(logFile, fileExists)
   if (action.kind === 'show-item-in-folder') {
-    shell.showItemInFolder(action.path)
-    return { action, error: '' }
+    try {
+      shell.showItemInFolder(action.path)
+      return { action, error: '' }
+    } catch (error) {
+      return { action, error: error instanceof Error ? error.message : String(error) }
+    }
   }
   const error = await shell.openPath(action.path)
   return { action, error }
