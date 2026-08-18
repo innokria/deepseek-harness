@@ -136,7 +136,7 @@ electron-builder 通过 `extraResources` 把两者复制进 `resources/`。启�
 
 ## 安全态势
 
-`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`。preload（`preload.cjs`）暴露 `platform`、Electron 版本、窗口控制、开机自启 / 系统通知偏好、一个深链订阅、`openLog()`（只打开配置好的 `harness.log`，不接受任意路径）与一个窄更新桥（状态读取/订阅、检查、安装）。宿主访问仍走既有的 loopback `/api` 围栏；preload 不重新暴露任何特权宿主方法。
+`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`。preload（`preload.cjs`）暴露 `platform`、Electron 版本、窗口控制、开机自启 / 系统通知 / 关闭行为偏好、一个深链订阅、`openLog()`（只打开配置好的 `harness.log`，不接受任意路径）与一个窄更新桥（状态读取/订阅、检查、安装）。关闭行为（`tray` 或 `quit`）决定关闭窗口是隐藏到托盘还是退出应用。宿主访问仍走既有的 loopback `/api` 围栏；preload 不重新暴露任何特权宿主方法。
 
 ## 已知限制
 

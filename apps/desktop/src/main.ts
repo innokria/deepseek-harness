@@ -27,7 +27,12 @@ import {
   restartNotificationFor,
   type NotificationSink,
 } from './notifications.ts'
-import { createPreferencesStore, DEFAULT_PREFERENCES, type PreferencesStore } from './preferences.ts'
+import {
+  createPreferencesStore,
+  DEFAULT_PREFERENCES,
+  type CloseBehavior,
+  type PreferencesStore,
+} from './preferences.ts'
 import {
   detectConnectingLocale,
   renderConnectingPage,
@@ -409,6 +414,23 @@ function writeNotificationsEnabled(enabled: boolean): NotificationsPrefState {
   return { enabled }
 }
 
+/** Snapshot returned to renderer close-behavior requests. */
+interface CloseBehaviorState {
+  behavior: CloseBehavior
+}
+
+function readCloseBehaviorState(): CloseBehaviorState {
+  const behavior = preferencesStore?.read().closeBehavior ?? DEFAULT_PREFERENCES.closeBehavior
+  return { behavior }
+}
+
+function writeCloseBehavior(behavior: unknown): CloseBehaviorState {
+  const value: CloseBehavior = behavior === 'quit' ? 'quit' : 'tray'
+  const current = preferencesStore?.read() ?? { ...DEFAULT_PREFERENCES }
+  preferencesStore?.write({ ...current, closeBehavior: value })
+  return { behavior: value }
+}
+
 function registerWindowControlIpc(): void {
   ipcMain.handle('dsh:window-minimize', (event) => {
     const win = windowFromEvent(event)
@@ -438,6 +460,10 @@ function registerWindowControlIpc(): void {
     writeNotificationsEnabled(enabled === true)
   ))
   ipcMain.handle(OPEN_LOG_CHANNEL, () => handleOpenLog())
+  ipcMain.handle('dsh:close-behavior-get', (): CloseBehaviorState => readCloseBehaviorState())
+  ipcMain.handle('dsh:close-behavior-set', (_event, behavior: unknown): CloseBehaviorState => (
+    writeCloseBehavior(behavior)
+  ))
 }
 
 /** Load the harness origin, or the connecting page when it is not ready yet. */
@@ -712,6 +738,7 @@ async function boot(): Promise<void> {
     disposeHost: async () => { await sup.stop() },
     quit: releaseAppQuit,
     reportError: (error) => { console.error('desktop shutdown failed:', error) },
+    readCloseBehavior: () => preferencesStore?.read().closeBehavior ?? DEFAULT_PREFERENCES.closeBehavior,
   })
   createTray()
   mainWindow = createWindow()

@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   openLog() {
     return ipcRenderer.invoke('dsh:open-log')
   },
+  getCloseBehavior() { return ipcRenderer.invoke('dsh:close-behavior-get') },
+  setCloseBehavior(behavior) { return ipcRenderer.invoke('dsh:close-behavior-set', behavior === 'quit' ? 'quit' : 'tray') },
   onDeepLink(callback) {
     if (typeof callback !== 'function') return () => {}
     const listener = (_event, url) => callback(url)

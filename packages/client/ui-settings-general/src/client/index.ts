@@ -23,6 +23,7 @@ import type {
 import { SettingsRoot } from './SettingsRoot.tsx'
 import { CloseLabel, HeaderContent, TriggerContent } from './chrome.tsx'
 import { GeneralSection } from './GeneralSection.tsx'
+import { CloseBehaviorRow, readDesktopCloseBehaviorBridge } from './CloseBehaviorRow.tsx'
 import { LaunchAtLoginRow, readDesktopLaunchAtLoginBridge } from './LaunchAtLoginRow.tsx'
 import { NotificationsRow, readDesktopNotificationsBridge } from './NotificationsRow.tsx'
 import { SettingsDocumentAction } from './SettingsDocumentAction.tsx'
@@ -36,6 +37,8 @@ export type {
 export type {
   GeneralSectionComponentProps,
 } from './GeneralSection.tsx'
+export type { CloseBehaviorRowComponentProps, CloseBehaviorState } from './CloseBehaviorRow.tsx'
+export { readDesktopCloseBehaviorBridge } from './CloseBehaviorRow.tsx'
 export type { LaunchAtLoginRowComponentProps, LaunchAtLoginState } from './LaunchAtLoginRow.tsx'
 export { readDesktopLaunchAtLoginBridge } from './LaunchAtLoginRow.tsx'
 export type { NotificationsRowComponentProps, NotificationsState } from './NotificationsRow.tsx'
@@ -198,5 +201,13 @@ export function apply(ctx: ClientContext): void {
       order: 51,
       locale: NS,
     }, NotificationsRow))
+  }
+  if (readDesktopCloseBehaviorBridge() !== undefined) {
+    ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+      name: 'settings.general.item',
+      id: 'close-behavior',
+      order: 52,
+      locale: NS,
+    }, CloseBehaviorRow))
   }
 }
