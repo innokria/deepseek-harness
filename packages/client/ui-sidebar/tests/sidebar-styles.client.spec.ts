@@ -67,4 +67,13 @@ describe('SidebarRoot.module.css', () => {
   it('reserves title-bar space under the macOS traffic lights', () => {
     expect(declarations(":global(html[data-dsh-desktop-platform='darwin']) .root")?.get('padding-top')).toBe('32px')
   })
+
+  it('keeps the slotted brand row at the full artwork height', () => {
+    expect(declarations('.brandIdentity')?.get('height')).toBe('24px')
+    expect(declarations('.brandName')?.get('height')).toBe('24px')
+    expect(declarations('.brandName')?.get('line-height')).toBe('24px')
+    expect(declarations('.brandName')?.get('font-size')).toBe('18px')
+    expect(declarations('.fallbackBrandName')?.get('font-size')).toBe('17px')
+    expect(declarations('.fallbackBrandName')?.get('white-space')).toBe('nowrap')
+  })
 })
