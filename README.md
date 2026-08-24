@@ -5,6 +5,33 @@ English | [中文](README.zh.md)
 DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
 
 It uses an architecture where **everything is a plugin**, and is powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper).
+## CUSTOM LLM AGENT  WITH LLAMA CPP and Custom GGUF .  RUNNING ON 2 CORE 16GB CPU 
+
+```
+DeepSeek Harness + llama.cpp
+==========================================================
+[DSH] Home:              /data
+[DSH] Public port:      7860
+[DSH] Internal port:    3080
+
+[LLAMA] Server:         /app/llama-server
+[LLAMA] Host:           127.0.0.1
+[LLAMA] Port:           8000
+[LLAMA] Model:          LFM2.5
+[LLAMA] Model path:     /app/LFM2.5-VL-3B-Q4_0.gguf
+[LLAMA] MMProj path:    /app/mmproj-LFM2.5-VL-3B-BF16.gguf
+[LLAMA] Context:        22288
+[LLAMA] Max tokens:     512
+[LLAMA] Threads:        2
+```
+
+## UI 
+
+```
+<img width="2349" height="1410" alt="image" src="https://github.com/user-attachments/assets/0ee7e6ba-751d-4c09-899c-b8b777b6b90f" />
+
+````
+
 
 ## Developer preview
 
