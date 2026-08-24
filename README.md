@@ -26,6 +26,8 @@ DeepSeek Harness + llama.cpp
 ```
 
 ## UI 
+![Uploading image.png…]()
+
 
 ```
 <img width="2349" height="1410" alt="image" src="https://github.com/user-attachments/assets/0ee7e6ba-751d-4c09-899c-b8b777b6b90f" />
