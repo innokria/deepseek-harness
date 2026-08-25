@@ -139,28 +139,70 @@ export PROBE_DISABLED=1
 # 2b. Install DSH web UI plugins
 # ==========================================================
 
+# ==========================================================
+# 2b. Install DSH web UI plugins
+# ==========================================================
+
 echo
 echo "=========================================================="
 echo "[2b/7] Installing DSH web UI plugins"
 echo "=========================================================="
 
-echo "[DSH] Installing UI shortcuts plugin..."
+PLUGINS=(
+    "@hytime/dsh-client-ui-shortcuts@0.1.12"
+    "dsh-ui-appearance"
+    "dsh-better-sidebar@latest"
+)
 
-if dsh plugin --profile web add @hytime/dsh-client-ui-shortcuts@0.1.12; then
-    echo "[DSH] UI shortcuts plugin installed"
-else
-    echo "[DSH] ERROR: UI shortcuts plugin installation failed"
-    exit 1
-fi
+FAILED_PLUGINS=()
 
-echo
-echo "[DSH] Installing UI appearance plugin..."
+for plugin in "${PLUGINS[@]}"; do
+    echo
+    echo "[DSH] Installing $plugin ..."
 
-if dsh plugin --profile web add dsh-ui-appearance; then
-    echo "[DSH] UI appearance plugin installed"
-else
-    echo "[DSH] ERROR: UI appearance plugin installation failed"
-    exit 1
+    if dsh plugin --profile web add "$plugin"; then
+        echo "[DSH] Successfully installed $plugin"
+    else
+        echo "[DSH] Initial install failed for $plugin"
+        FAILED_PLUGINS+=("$plugin")
+    fi
+done
+
+# Approve pnpm build scripts if needed
+if [ ${#FAILED_PLUGINS[@]} -gt 0 ]; then
+    echo
+    echo "[DSH] Some plugins failed. Attempting pnpm build approval..."
+
+    if [ -d "/data/profiles/web" ]; then
+        cd /data/profiles/web
+    elif [ -d "$HOME/.dsh/profiles/web" ]; then
+        cd "$HOME/.dsh/profiles/web"
+    fi
+
+    pnpm approve-builds --all || true
+
+    echo
+    echo "[DSH] Retrying failed plugins..."
+
+    STILL_FAILED=()
+
+    for plugin in "${FAILED_PLUGINS[@]}"; do
+        echo "[DSH] Retrying $plugin ..."
+
+        if dsh plugin --profile web add "$plugin"; then
+            echo "[DSH] Successfully installed $plugin"
+        else
+            echo "[DSH] ERROR: Failed to install $plugin"
+            STILL_FAILED+=("$plugin")
+        fi
+    done
+
+    if [ ${#STILL_FAILED[@]} -gt 0 ]; then
+        echo
+        echo "[DSH] The following plugins could not be installed:"
+        printf ' - %s\n' "${STILL_FAILED[@]}"
+        exit 1
+    fi
 fi
 
 echo
