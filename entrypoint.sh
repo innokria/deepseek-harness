@@ -152,6 +152,8 @@ PLUGINS=(
     "@hytime/dsh-client-ui-shortcuts@0.1.12"
     "dsh-ui-appearance"
     "dsh-better-sidebar@latest"
+    "dshmarket"
+    "dsh-skill-picker"
 )
 
 FAILED_PLUGINS=()
@@ -208,6 +210,12 @@ fi
 echo
 echo "[DSH] Installed plugins:"
 dsh plugin --profile web list || true
+
+
+
+
+
+
 
 # ==========================================================
 # 3. Configure llama.cpp
@@ -582,6 +590,150 @@ agent-default-model:
   model: ${MODEL_NAME}
 EOF
 
+echo "=========================================================="
+echo "[5/7] Configuring DSH providers"
+echo "=========================================================="
+
+export LLAMA_API_KEY="local"
+
+rm -f "${DSH_HOME}/settings.yaml"
+
+cat > "${DSH_HOME}/settings.yaml" <<EOF
+llm-pi-ai:
+  providers:
+
+    # ========================================================
+    # QWEN
+    # ========================================================
+    qwen:
+      displayName: Qwen 3.8 Flash Next
+      api: openai-completions
+      baseURL: https://pnywsahxhac1qjbo.us-east-2.aws.endpoints.huggingface.cloud/v1
+      apiKeyEnv: HF_TOKEN
+      models:
+        - id: Qwen/Qwen3.8-Flash-Next
+
+    # ========================================================
+    # LOCAL LLAMA
+    # ========================================================
+    llama:
+      displayName: LFM2.5 Local
+      api: openai-completions
+      baseURL: http://127.0.0.1:${LLAMA_PORT}/v1
+      apiKeyEnv: LLAMA_API_KEY
+      models:
+        - id: ${MODEL_NAME}
+
+    # ========================================================
+    # AGNES AI
+    # ========================================================
+    agnes:
+      displayName: Agnes AI
+      api: openai-completions
+      baseURL: https://apihub.agnes-ai.com/v1
+      apiKeyEnv: AGNES_API_KEY
+      models:
+        - id: agnes-2.5-flash
+
+    # ========================================================
+    # OPENROUTER - MINIMAX M3
+    # ========================================================
+    openrouter_minimax:
+      displayName: OpenRouter - MiniMax M3
+      api: openai-completions
+      baseURL: https://openrouter.ai/api/v1
+      apiKeyEnv: OPENROUTER_API_KEY
+      models:
+        - id: minimax/minimax-m3:free
+
+    openrouter_nemotron_ultra:
+      displayName: OpenRouter - Nemotron Ultra 550B
+      api: openai-completions
+      baseURL: https://openrouter.ai/api/v1
+      apiKeyEnv: OPENROUTER_API_KEY
+      models:
+        - id: nvidia/nemotron-3-ultra-550b-a55b:free
+
+    openrouter_nemotron_super:
+      displayName: OpenRouter - Nemotron Super 120B
+      api: openai-completions
+      baseURL: https://openrouter.ai/api/v1
+      apiKeyEnv: OPENROUTER_API_KEY
+      models:
+        - id: nvidia/nemotron-3-super-120b-a12b:free
+
+    openrouter_glm52:
+      displayName: OpenRouter - GLM 5.2
+      api: openai-completions
+      baseURL: https://openrouter.ai/api/v1
+      apiKeyEnv: OPENROUTER_API_KEY
+      models:
+        - id: z-ai/glm-5.2:free
+
+    openrouter_gemma4:
+      displayName: OpenRouter - Gemma 4 31B
+      api: openai-completions
+      baseURL: https://openrouter.ai/api/v1
+      apiKeyEnv: OPENROUTER_API_KEY
+      models:
+        - id: google/gemma-4-31b-it:free
+
+    openrouter_kimi:
+      displayName: OpenRouter - Kimi K2
+      api: openai-completions
+      baseURL: https://openrouter.ai/api/v1
+      apiKeyEnv: OPENROUTER_API_KEY
+      models:
+        - id: moonshotai/kimi-k2:free
+
+    openrouter_qwen:
+      displayName: OpenRouter - Qwen3 Coder
+      api: openai-completions
+      baseURL: https://openrouter.ai/api/v1
+      apiKeyEnv: OPENROUTER_API_KEY
+      models:
+        - id: qwen/qwen3-coder:free
+
+    openrouter_deepseek:
+      displayName: OpenRouter - DeepSeek V3.1
+      api: openai-completions
+      baseURL: https://openrouter.ai/api/v1
+      apiKeyEnv: OPENROUTER_API_KEY
+      models:
+        - id: deepseek/deepseek-chat-v3.1:free
+
+    openrouter_llama:
+      displayName: OpenRouter - Llama 3.3 70B
+      api: openai-completions
+      baseURL: https://openrouter.ai/api/v1
+      apiKeyEnv: OPENROUTER_API_KEY
+      models:
+        - id: meta-llama/llama-3.3-70b-instruct:free
+
+    openrouter_mistral:
+      displayName: OpenRouter - Mistral Small 3.2
+      api: openai-completions
+      baseURL: https://openrouter.ai/api/v1
+      apiKeyEnv: OPENROUTER_API_KEY
+      models:
+        - id: mistralai/mistral-small-3.2-24b-instruct:free
+
+    # ========================================================
+    # OPENAI
+    # ========================================================
+    openai:
+      displayName: OpenAI
+      api: openai-completions
+      baseURL: https://api.openai.com/v1
+      apiKeyEnv: OPENAI_API_KEY
+      models:
+        - id: ${OPENAI_MODEL_NAME}
+
+agent-default-model:
+  provider: llama
+  model: ${MODEL_NAME}
+EOF
+
 echo
 echo "=========================================================="
 echo "[DSH] settings.yaml"
@@ -590,26 +742,24 @@ echo "=========================================================="
 cat "${DSH_HOME}/settings.yaml"
 
 echo
-echo "[DSH] Provider: llama"
-echo "[DSH] Model: ${MODEL_NAME}"
-echo "[DSH] Endpoint: http://127.0.0.1:${LLAMA_PORT}/v1"
-echo "[DSH] Internal local credential: LLAMA_API_KEY=local"
+echo "=========================================================="
+echo "[DSH] Providers"
+echo "=========================================================="
+echo "  llama      -> http://127.0.0.1:${LLAMA_PORT}/v1"
+echo "  agnes      -> https://apihub.agnes-ai.com/v1"
+echo "  openrouter -> https://openrouter.ai/api/v1"
+echo "  openai     -> https://api.openai.com/v1"
+echo
+echo "[DSH] Models"
+echo "  llama      -> ${MODEL_NAME}"
+echo "  agnes      -> agnes-2.5-flash"
+echo "  openrouter -> stealth/ox-alpha"
+echo "  openai     -> ${OPENAI_MODEL_NAME}"
+echo
+echo "[DSH] Default provider: llama"
+echo "[DSH] Default model: ${MODEL_NAME}"
 
 unset DEEPSEEK_API_KEY 2>/dev/null || true
-
-echo "[DSH] DeepSeek API key disabled"
-
-if [[ -f "${DSH_HOME}/.credentials.yaml" ]]; then
-
-    echo "[DSH] Existing credentials file found"
-
-    chmod 600 "${DSH_HOME}/.credentials.yaml" 2>/dev/null || true
-
-else
-
-    echo "[DSH] No credentials file"
-
-fi
 
 # ==========================================================
 # 6. Start DSH
