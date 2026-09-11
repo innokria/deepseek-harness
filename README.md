@@ -64,7 +64,7 @@ nginx :7860
                     LFM2.5 GGUF
 ```
 
-## use Docker and entrypoint.sh file to load
+## use Docker and start.sh file to load
 ## CUSTOM LLM AGENT  
 
 ```
