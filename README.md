@@ -119,7 +119,6 @@ RUN corepack enable && \
 WORKDIR /app
 
 RUN git clone \
-    --branch 1.0 \
     --depth 1 \
     https://github.com/innokria/deepseek-harness.git \
     deepseek-harness
@@ -135,15 +134,15 @@ ENV DSH_HOST=127.0.0.1
 ENV DSH_PORT=3080
 ENV PORT=7860
 
-# Override the trusted host from start.sh use with you space name
-ENV DSH_TRUSTED_HOST=rahul7star-deepseek-harness-v2.hf.space 
+# Override the trusted host from the repo's start.sh
+ENV DSH_TRUSTED_HOST=rahul7star-deepseek-harness-v2.hf.space
 
 RUN mkdir -p /data/dsh
 
-COPY /app/deepseek-harness/nginx.conf /etc/nginx/nginx.conf
-COPY /app/deepseek-harness/start.sh /start.sh
-
-RUN chmod +x /start.sh
+# Use the files exactly as they exist in master
+RUN cp /app/deepseek-harness/nginx.conf /etc/nginx/nginx.conf && \
+    cp /app/deepseek-harness/start.sh /start.sh && \
+    chmod +x /start.sh
 
 EXPOSE 7860
 
