@@ -119,10 +119,10 @@ RUN corepack enable && \
 WORKDIR /app
 
 RUN git clone \
-        --branch 1.0 \
-        --depth 1 \
-        https://github.com/innokria/deepseek-harness.git \
-        deepseek-harness
+    --branch 1.0 \
+    --depth 1 \
+    https://github.com/innokria/deepseek-harness.git \
+    deepseek-harness
 
 WORKDIR /app/deepseek-harness
 
@@ -134,6 +134,9 @@ ENV DSH_HOME=/data/dsh
 ENV DSH_HOST=127.0.0.1
 ENV DSH_PORT=3080
 ENV PORT=7860
+
+# Override the trusted host from start.sh use with you space name
+ENV DSH_TRUSTED_HOST=rahul7star-deepseek-harness-v2.hf.space 
 
 RUN mkdir -p /data/dsh
 
