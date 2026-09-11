@@ -65,7 +65,13 @@ nginx :7860
 ```
 
 ## use Docker and start.sh file to load
+
+
+
+## Use entrypoint.sh if need LLAMA but now I am not using it
 ## CUSTOM LLM AGENT  
+
+
 
 ```
 WITH LLAMA CPP and Custom GGUF .  RUNNING ON 2 CORE 16GB CPU 
