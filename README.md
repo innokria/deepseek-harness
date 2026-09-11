@@ -96,6 +96,78 @@ Internet
 
 
 
+
+## RUN in HF 
+ - create a empty docker file and add this
+```
+FROM node:22-bookworm
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y \
+        git \
+        curl \
+        ca-certificates \
+        nginx \
+        && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable && \
+    corepack prepare pnpm@11.7.0 --activate
+
+WORKDIR /app
+
+RUN git clone \
+        --branch 1.0 \
+        --depth 1 \
+        https://github.com/innokria/deepseek-harness.git \
+        deepseek-harness
+
+WORKDIR /app/deepseek-harness
+
+RUN pnpm install
+
+RUN pnpm run build
+
+ENV DSH_HOME=/data/dsh
+ENV DSH_HOST=127.0.0.1
+ENV DSH_PORT=3080
+ENV PORT=7860
+
+RUN mkdir -p /data/dsh
+
+COPY /app/deepseek-harness/nginx.conf /etc/nginx/nginx.conf
+COPY /app/deepseek-harness/start.sh /start.sh
+
+RUN chmod +x /start.sh
+
+EXPOSE 7860
+
+CMD ["/start.sh"]
+```
+
+
+OR
+
+## Run locally 
+```
+FROM docker:27-cli
+
+RUN apk add --no-cache git
+
+WORKDIR /src
+
+RUN git clone \
+    --branch 1.0 \
+    --depth 1 \
+    https://github.com/innokria/deepseek-harness.git \
+    .
+
+CMD ["./start.sh"]
+```
+
+
 ## Use entrypoint.sh if need LLAMA but now I am not using it
 ## CUSTOM LLM AGENT  
 
