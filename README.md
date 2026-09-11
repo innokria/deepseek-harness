@@ -12,56 +12,84 @@ Documentation: [https://deepseek-harness.github.io/deepseek-harness/](https://de
 ## NEW UPDATE Sept 2026
 
 ## Design 
-
+## APP flow
 ```
-HF Space
-   │
-   ▼
-llama.cpp:full
-   │
-   ├── /app/llama-server
-   ├── llama shared libraries
-   │
-   ├── LFM2.5-VL-3B.F16.gguf
-   └── LFM2.5-VL-3B.F16-mmproj.gguf
-   │
-   ▼
-entrypoint.sh
-   │
-   ├── llama-server :8000
-   │       └── OpenAI-compatible /v1
-   │
-   ├── DSH :3080
-   │       └── local-lfm → LFM2.5
-   │
-   └── nginx :7860
+                    ┌──────────────────────┐
+Internet ──────────►│ nginx :7860          │
+                    │ 0.0.0.0              │
+                    └──────────┬───────────┘
+                               │
+                               │ proxy
+                               ▼
+                    ┌──────────────────────┐
+                    │ DSH :3080            │
+                    │ 127.0.0.1 ONLY       │
+                    └──────────────────────┘
 ```
 
 
-## new
+
 ```
-HF Space
-   │
-   ▼
-nginx :7860
-   │
-   ├── /              → DSH :3080
-   │
-   ├── /api/*         → DSH :3080   ← Settings/Models FIX
-   │
-   └── /plugins/*     → DSH :3080
-                         │
-                         ▼
-                    DSH / pi-ai
-                         │
-                         ▼
-                 llama provider
-                         │
-                         ▼
-                 llama.cpp :8000
-                         │
-                         ▼
-                    LFM2.5 GGUF
+Internet
+    │
+    │ HTTP/HTTPS
+    ▼
+┌──────────────────────────┐
+│ nginx :7860              │
+│ 0.0.0.0                  │
+│ PUBLIC                   │
+└────────────┬─────────────┘
+             │
+             │ reverse proxy
+             ▼
+┌──────────────────────────┐
+│ DSH :3080                │
+│ 127.0.0.1 ONLY           │
+│ INTERNAL                  │
+└──────────────────────────┘
+             │
+             │ outbound API requests
+             ▼
+     ┌───────────────────────┐
+     │ Remote LLM Providers  │
+     ├───────────────────────┤
+     │ Groq                  │
+     │ Gemini                │
+     │ Cerebras              │
+     │ SiliconFlow           │
+     │ ModelScope            │
+     │ Z.ai                  │
+     │ DashScope             │
+     │ Qianfan               │
+     │ Volcengine            │
+     │ OpenRouter             │
+     │ etc.                  │
+     └───────────────────────┘
+```
+## providers
+```
+                    DSH
+                     │
+             Free Provider Pool
+                     │
+       ┌─────────────┼─────────────┐
+       │             │             │
+   WESTERN        CHINESE       AGGREGATORS
+       │             │             │
+     Groq       SiliconFlow    OpenRouter
+   Cerebras      ModelScope       LLM7
+    Gemini          Z.ai
+   Mistral       DashScope
+  SambaNova       Qianfan
+   Cohere        Volcengine
+       │             │
+       └─────────────┴─────────────┘
+                     │
+              Optional providers
+                     │
+             HF / Agnes / NVIDIA
+                     │
+              Local llama.cpp
 ```
 
 ## use Docker and start.sh file to load
