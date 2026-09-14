@@ -258,7 +258,6 @@ llm-pi-ai:
         - id: openai/gpt-oss-safeguard-20b
         - id: qwen/qwen3.8-27b
 
-
     cerebras:
       displayName: Cerebras
       api: openai-completions
@@ -267,7 +266,6 @@ llm-pi-ai:
       timeoutMs: 120000
       models:
         - id: gpt-oss-120b
-
 
     gemini:
       displayName: Google Gemini
@@ -279,7 +277,6 @@ llm-pi-ai:
         - id: gemini-2.5-flash
         - id: gemini-2.5-flash-lite
 
-
     mistral:
       displayName: Mistral
       api: openai-completions
@@ -288,7 +285,6 @@ llm-pi-ai:
       timeoutMs: 120000
       models:
         - id: mistral-small-latest
-
 
     sambanova:
       displayName: SambaNova
@@ -299,7 +295,6 @@ llm-pi-ai:
       models:
         - id: Meta-Llama-3.3-70B-Instruct
 
-
     cohere:
       displayName: Cohere
       api: openai-completions
@@ -308,7 +303,6 @@ llm-pi-ai:
       timeoutMs: 120000
       models:
         - id: command-a-03-2025
-
 
     # ========================================================
     # CHINESE PROVIDERS - FIRST CLASS
@@ -324,7 +318,6 @@ llm-pi-ai:
         - id: Qwen/Qwen3-8B
         - id: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
 
-
     modelscope:
       displayName: ModelScope
       api: openai-completions
@@ -333,7 +326,6 @@ llm-pi-ai:
       timeoutMs: 120000
       models:
         - id: Qwen/Qwen3-8B
-
 
     zai:
       displayName: Z.ai GLM
@@ -345,17 +337,23 @@ llm-pi-ai:
         - id: glm-4.5-flash
         - id: glm-4.7-flash
 
-
-    dashscope:
-      displayName: Alibaba Qwen
+    dashscope_qwen:
+      displayName: Alibaba Qwen 3.8 Flash
       api: openai-completions
-      baseURL: https://dashscope.aliyuncs.com/compatible-mode/v1
+      baseURL: https://dashscope-intl.aliyuncs.com/compatible-mode/v1
       apiKeyEnv: DASHSCOPE_API_KEY
       timeoutMs: 120000
       models:
-        - id: qwen-plus
-        - id: qwen-turbo
+        - id: qwen3.8-flash
 
+    dashscope_deepseek:
+      displayName: Alibaba DeepSeek V4 Flash
+      api: openai-completions
+      baseURL: https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+      apiKeyEnv: DASHSCOPE_API_KEY
+      timeoutMs: 120000
+      models:
+        - id: deepseek-v4-flash
 
     qianfan:
       displayName: Baidu Qianfan
@@ -367,7 +365,6 @@ llm-pi-ai:
         - id: deepseek-v3
         - id: qwen3-32b
 
-
     volcengine:
       displayName: Volcengine Doubao
       api: openai-completions
@@ -377,11 +374,8 @@ llm-pi-ai:
       models:
         - id: doubao-seed-1-6-flash
 
-
     # ========================================================
     # OPENROUTER - DYNAMIC FREE POOL
-    #
-    # Keeps OpenRouter's dynamic free routing available.
     # ========================================================
 
     openrouter:
@@ -393,9 +387,8 @@ llm-pi-ai:
       models:
         - id: openrouter/free
 
-
     # ========================================================
-    # OPENROUTER - ORIGINAL INDIVIDUAL FREE MODELS
+    # OPENROUTER - INDIVIDUAL FREE MODELS
     # ========================================================
 
     openrouter_minimax:
@@ -407,7 +400,6 @@ llm-pi-ai:
       models:
         - id: minimax/minimax-m3:free
 
-
     openrouter_nemotron_ultra:
       displayName: OpenRouter - Nemotron Ultra
       api: openai-completions
@@ -416,7 +408,6 @@ llm-pi-ai:
       timeoutMs: 120000
       models:
         - id: nvidia/nemotron-3-ultra-550b-a55b:free
-
 
     openrouter_nemotron_super:
       displayName: OpenRouter - Nemotron Super
@@ -427,7 +418,6 @@ llm-pi-ai:
       models:
         - id: nvidia/nemotron-3-super-120b-a12b:free
 
-
     openrouter_glm52:
       displayName: OpenRouter - GLM 5.2
       api: openai-completions
@@ -436,7 +426,6 @@ llm-pi-ai:
       timeoutMs: 120000
       models:
         - id: z-ai/glm-5.2:free
-
 
     openrouter_gemma4:
       displayName: OpenRouter - Gemma 4 31B
@@ -447,7 +436,6 @@ llm-pi-ai:
       models:
         - id: google/gemma-4-31b-it:free
 
-
     openrouter_kimi:
       displayName: OpenRouter - Kimi K2
       api: openai-completions
@@ -456,7 +444,6 @@ llm-pi-ai:
       timeoutMs: 120000
       models:
         - id: moonshotai/kimi-k2:free
-
 
     openrouter_qwen:
       displayName: OpenRouter - Qwen3 Coder
@@ -467,7 +454,6 @@ llm-pi-ai:
       models:
         - id: qwen/qwen3-coder:free
 
-
     openrouter_deepseek:
       displayName: OpenRouter - DeepSeek V3.1
       api: openai-completions
@@ -476,7 +462,6 @@ llm-pi-ai:
       timeoutMs: 120000
       models:
         - id: deepseek/deepseek-chat-v3.1:free
-
 
     openrouter_llama:
       displayName: OpenRouter - Llama 3.3 70B
@@ -487,7 +472,6 @@ llm-pi-ai:
       models:
         - id: meta-llama/llama-3.3-70b-instruct:free
 
-
     openrouter_mistral:
       displayName: OpenRouter - Mistral Small
       api: openai-completions
@@ -497,12 +481,8 @@ llm-pi-ai:
       models:
         - id: mistralai/mistral-small-3.2-24b-instruct:free
 
-
     # ========================================================
     # HUGGING FACE
-    #
-    # Limited free allowance.
-    # Not considered unlimited free capacity.
     # ========================================================
 
     huggingface:
@@ -515,10 +495,18 @@ llm-pi-ai:
         - id: openai/gpt-oss-120b
         - id: openai/gpt-oss-20b
 
+    # ========================================================
+    # QWEN ENDPOINTS
+    # ========================================================
 
-    # ========================================================
-    # EXISTING QWEN HF ENDPOINT
-    # ========================================================
+    dashscope_qwen_flash_next:
+      displayName: Qwen 3.8 Flash Next
+      api: openai-completions
+      baseURL: https://dashscope-intl.aliyuncs.com/api/v2/apps/protocols/compatible-mode/v1
+      apiKeyEnv: DASHSCOPE_API_KEY
+      timeoutMs: 120000
+      models:
+        - id: Qwen/Qwen3.8-Flash-Next
 
     qwen:
       displayName: Qwen 3.8 Flash Next
@@ -528,7 +516,6 @@ llm-pi-ai:
       timeoutMs: 120000
       models:
         - id: Qwen/Qwen3.8-Flash-Next
-
 
     # ========================================================
     # AGNES
@@ -543,9 +530,8 @@ llm-pi-ai:
       models:
         - id: agnes-2.5-flash
 
-
     # ========================================================
-    # OPTIONAL NVIDIA
+    # NVIDIA
     # ========================================================
 
     nvidia:
@@ -557,12 +543,8 @@ llm-pi-ai:
       models:
         - id: openai/gpt-oss-120b
 
-
     # ========================================================
     # LOCAL LLAMA.CPP
-    #
-    # Optional only.
-    # Do NOT use as default on 2 CPU Space.
     # ========================================================
 
     llama:
@@ -574,11 +556,8 @@ llm-pi-ai:
       models:
         - id: LFM2.5
 
-
 # ============================================================
 # DEFAULT
-#
-# Remote provider instead of local llama.cpp.
 # ============================================================
 
 agent-default-model:
