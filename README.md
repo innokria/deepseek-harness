@@ -12,6 +12,12 @@ Documentation: [https://deepseek-harness.github.io/deepseek-harness/](https://de
 ## NEW UPDATE Sept 2026
 
 ## Design 
+Three files required
+-start.sh
+-dockerfile
+-nigix
+
+
 ## APP flow
 ```
                     ┌──────────────────────┐
