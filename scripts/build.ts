@@ -44,6 +44,7 @@ function main(): void {
 
   // Native system build removed for HF/web build.
   runScript('build:lib:web', buildEnvironment)
+  runScript('build:web', buildEnvironment)
  
 
   const record = writeClientBuildRecord(root, clientEnvironment)
