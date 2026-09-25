@@ -41,9 +41,11 @@ function main(): void {
   const buildEnvironment = clientBuildProcessEnvironment(process.env, clientEnvironment)
 
   rmSync(resolve(root, CLIENT_BUILD_RECORD_PATH), { force: true })
-  runScript('build:native-system', buildEnvironment)
+
+  // Native system build removed for HF/web build.
   runScript('build:lib', buildEnvironment)
   runScript('build:web', buildEnvironment)
+
   const record = writeClientBuildRecord(root, clientEnvironment)
   console.log(
     `build: recorded ${String(record.artifacts.fileCount)} client artifact(s) with ${String(Object.keys(record.environment).length)} public value(s)`,
