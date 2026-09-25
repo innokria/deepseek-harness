@@ -43,8 +43,8 @@ function main(): void {
   rmSync(resolve(root, CLIENT_BUILD_RECORD_PATH), { force: true })
 
   // Native system build removed for HF/web build.
-  runScript('build:lib', buildEnvironment)
-  runScript('build:web', buildEnvironment)
+  runScript('build:lib:web', buildEnvironment)
+ 
 
   const record = writeClientBuildRecord(root, clientEnvironment)
   console.log(
