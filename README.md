@@ -216,7 +216,11 @@ DeepSeek Harness + llama.cpp
 <img width="2349" height="1410" alt="image" src="https://github.com/user-attachments/assets/0ee7e6ba-751d-4c09-899c-b8b777b6b90f" />
 
 ````
-
+## Planing with files
+```
+npx skills add OthmanAdi/planning-with-files --skill planning-with-files -g
+dsh plugin --profile web add dsh-planning-with-files
+```
 
 ## Developer preview
 
