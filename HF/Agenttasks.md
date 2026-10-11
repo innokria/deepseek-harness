@@ -14,7 +14,7 @@ also all planning work has to be done at path
 
 ```
 /root/r/
-├── .planning/              ← planning-skill state (kept at session root so plan tracking stays intact)
+├── .planning/              ← planning-skill state (kept at session root so plan tracking stays intact)-> move this to /data/dsh/ohamlab/planningwithfiles folder also set this path for all future /planning-with-files work
 
 
 /data/dsh/ohamlab/addnewporject/        ← your mounted bucket path
