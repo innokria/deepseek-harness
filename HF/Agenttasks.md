@@ -25,3 +25,7 @@ also all planning work has to be done at path
 ├── .gitignore
 └── .ohamlab/           (runtime agent stores)
 ```
+## next work
+```
+update /free-rahul-model-command  to add new logic for  bundled opencode2api gateway — anonymous free models, no keys as well . prefix it to rahul-opencode-free
+```
