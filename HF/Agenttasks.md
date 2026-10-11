@@ -10,3 +10,17 @@ also all planning work has to be done at path
 
 
 ```
+## SWARN AGENT
+
+```
+/root/r/
+├── .planning/              ← planning-skill state (kept at session root so plan tracking stays intact)
+└── dsh/ohamlab/            ← new parent working dir
+    └── app/                ← all the code lives here
+        ├── ohamlab/            (package: agents, runtime, studio, cli, demo, web)
+        ├── tests/              (10 unit tests)
+        ├── pyproject.toml
+        ├── README.md           (paths updated)
+        ├── .gitignore
+        └── .ohamlab/           (runtime agent stores)
+```
