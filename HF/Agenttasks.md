@@ -29,3 +29,18 @@ also all planning work has to be done at path
 ```
 update /free-rahul-model-command  to add new logic for  bundled opencode2api gateway — anonymous free models, no keys as well . prefix it to rahul-opencode-free
 ```
+
+
+## Horses
+```
+/data/dsh/ohamlab/addnewporject/horses_2025.json find the winner
+
+
+File	Action
+/data/dsh/ohamlab/addnewporject/horses_2025.json	JSON horse list with year data (24 runners)
+/data/dsh/ohamlab/addnewporject/predict_melbourne.py	Intelligent prediction script
+/data/dsh/ohamlab/addnewporject/reports/	Generated .md prediction reports
+/data/dsh/ohamlab/addnewporject/horse-list.md	Original markdown format
+
+
+```
