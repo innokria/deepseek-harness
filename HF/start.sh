@@ -112,13 +112,36 @@ mkdir -p "${DSH_SESSION_BACKUP_DIR}"
 # Sessions MUST use local container storage.
 # ----------------------------------------------------------
 
-rm -rf "${DSH_LOCAL_SESSIONS}"
+# rm -rf "${DSH_LOCAL_SESSIONS}"
 
-mkdir -p "${DSH_LOCAL_SESSIONS}"
+# mkdir -p "${DSH_LOCAL_SESSIONS}"
 
-rm -rf "${DSH_HOME}/sessions"
+# rm -rf "${DSH_HOME}/sessions"
 
-ln -s "${DSH_LOCAL_SESSIONS}" "${DSH_HOME}/sessions"
+# ln -s "${DSH_LOCAL_SESSIONS}" "${DSH_HOME}/sessions"
+
+
+mkdir -p "${DSH_HOME}" "${DSH_LOCAL_SESSIONS}"
+
+if [ -L "${DSH_HOME}/sessions" ]; then
+    TARGET=$(readlink "${DSH_HOME}/sessions")
+
+    if [ "${TARGET}" != "${DSH_LOCAL_SESSIONS}" ]; then
+        echo "[SESSION] ERROR: unexpected sessions symlink: ${TARGET}"
+        exit 1
+    fi
+
+elif [ -e "${DSH_HOME}/sessions" ]; then
+    echo "[SESSION] ERROR: sessions path already exists."
+    echo "[SESSION] Back up and migrate it before continuing."
+    exit 1
+
+else
+    ln -s "${DSH_LOCAL_SESSIONS}" "${DSH_HOME}/sessions"
+fi
+
+
+
 
 echo "[DSH] Persistent storage: ${DSH_HOME}"
 echo "[DSH] Session storage:     ${DSH_HOME}/sessions -> ${DSH_LOCAL_SESSIONS}"
@@ -726,6 +749,41 @@ fi
 
 
 
+# echo
+# echo "=========================================================="
+# echo "[FREE-LLM] # Free Model commnad"
+# echo "=========================================================="
+
+# # Free Model Plugin
+
+# if [ -d "/data/dsh/skills/free-model" ]; then
+
+#     echo "[OHAMLAB] Installing free-model..."
+
+#     if pnpm dsh plugin \
+#         --profile web \
+#         add "link:/data/dsh/skills/free-model" \
+#         >/tmp/free-model.log 2>&1
+#     then
+
+#         echo "[OHAMLAB] OK: free-model installed"
+
+#     else
+
+#         echo "[OHAMLAB] WARNING: free-model installation failed"
+#         tail -20 /tmp/free-model.log 2>/dev/null || true
+
+#     fi
+
+# else
+
+#     echo "[OHAMLAB] WARNING: /data/dsh/skills/free-model not found"
+
+# fi
+
+
+
+
 
 # # ==========================================================
 # # Install dsh-context
@@ -812,14 +870,22 @@ llm-pi-ai:
 
 
     HFQWEN:
-      displayName: HUGGUN-Qwen29B
+      displayName: HUGGUN-Xing
       api: openai-completions
-      baseURL: https://JonathanColetti-Qwen3.8-27B-Uncensored-Demo.hf.space/v1
+      baseURL: https://rahul7star-xing4-0-29b-a4b.hf.space/v1
       apiKeyEnv: HF_TOKEN
       timeoutMs: 120000
       models:
-        - id: Qwen3.8-27B-Uncensored-Demo
-
+        - id: Xing
+        
+    HFQWENX:
+      displayName: HUGGUN-XingXX
+      api: openai-completions
+      baseURL: https://rahul7star-xing4-0-29b-a4b.hf.space/v1/chat/completions
+      apiKeyEnv: HF_TOKEN
+      timeoutMs: 120000
+      models:
+        - id: Xing
         
     kilo:
       displayName: Kilo Free
@@ -858,9 +924,9 @@ llm-pi-ai:
       apiKeyEnv: DASHSCOPE_API_KEY
       timeoutMs: 120000
       models:
-        - id: qwen3-vl-32b-thinking
-        - id: qwen-max
-        - id: qwen3-vl-30b-a3b-thinking
+        - id: kimi-k3
+        - id: qwen3-coder-flash
+        - id: qwen3.5-27b
         - id: qwen3-235b-a22b-thinking-2507
         - id: qwen-plus-2025-07-28
         - id: qwen3.6-plus
@@ -872,13 +938,13 @@ llm-pi-ai:
         - id: Mistral-7B-Instruct-v0.3
 
     groq:
-      displayName: Groq Free
+      displayName: NVID-RAHUL
       api: openai-completions
-      baseURL: https://api.groq.com/openai/v1
-      apiKeyEnv: GROQ_API_KEY
+      baseURL: https://integrate.api.nvidia.com/v1
+      apiKeyEnv: NVIDIA_API_KEY
       timeoutMs: 120000
       models:
-        - id: openai/gpt-oss-120b
+        - id: nvidia/nemotron-3-ultra-550b-a55b
         - id: openai/gpt-oss-20b
         - id: openai/gpt-oss-safeguard-20b
         - id: qwen/qwen3.8-27b
@@ -1018,13 +1084,13 @@ llm-pi-ai:
         - id: openrouter/free
 
     openrouter_minimax:
-      displayName: OpenRouter - MiniMax M3
+      displayName: OpenRouter - stealth
       api: openai-completions
       baseURL: https://openrouter.ai/api/v1
       apiKeyEnv: OPENROUTER_API_KEY
       timeoutMs: 120000
       models:
-        - id: minimax/minimax-m3:free
+        - id: stealth/space-bunny-alpha
 
     openrouter_nemotron_ultra:
       displayName: OpenRouter - Nemotron Ultra
@@ -1171,7 +1237,13 @@ llm-pi-ai:
       apiKeyEnv: NVIDIA_API_KEY
       timeoutMs: 120000
       models:
-        - id: openai/gpt-oss-120b
+        - id: nvidia/nemotron-3.5-lightning-30b-a3b
+        - id: z-ai/glm-5.3
+        - id: moonshotai/kimi-k3
+        - id: meta/muse-glimmer-30b 
+        - id: nvidia/nemotron-3-ultra-550b-a55b  
+        - id: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning  
+        - id: nvidia/nemotron-3-super-120b-a12b  
 
     # ========================================================
     # LOCAL LLAMA.CPP
