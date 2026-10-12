@@ -55,10 +55,10 @@ File	Action
 
 ```
 ## AGENTS
-```Feature	ohamlab-agents	melbourne-agent
+```
+Feature	ohamlab-agents	melbourne-agent
 Task Scope	Any independent task	Melbourne Cup 2026 only
 Agents	User-specified N independent agents	Single horse racing agent
 Reports	Task results + aggregation	Horse racing predictions
 Flexibility	General-purpose	Specialized for horse racing
-The ohamlab-agents skill and melbourne-agent skill can coexist and serve different purposes.
 ```
