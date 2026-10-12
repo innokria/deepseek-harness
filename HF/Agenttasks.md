@@ -36,6 +36,9 @@ update /free-rahul-model-command  to add new logic for  bundled opencode2api gat
 
 
 /root/r/run_melbourne.sh
+OR
+
+/data/dsh/ohamlab/addnewporject/run_melbourne.sh
 
 
 
