@@ -1,4 +1,7 @@
-
+## call the agent
+```
+/ohamlab-agents  --task "write a phthon code for hello world" --agents 5
+```
 ## ✅ Task Complete: `ohamlab-agents` Skill Fully Functional
 
 The `ohamlab-agents` skill has been successfully implemented and tested. Here's what was accomplished:
