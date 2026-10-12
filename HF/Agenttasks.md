@@ -33,12 +33,13 @@ update /free-rahul-model-command  to add new logic for  bundled opencode2api gat
 
 ## Horses
 ```
-
-
-/root/r/run_melbourne.sh
-OR
-
 /data/dsh/ohamlab/addnewporject/run_melbourne.sh
+# Or from workspace:
+/root/r/run_melbourne.sh
+
+/data/dsh/ohamlab/addnewporject/run_melbourne.sh --agent 3
+# Or:
+/data/dsh/ohamlab/addnewporject/run_melbourne.sh --agent 10
 
 
 
