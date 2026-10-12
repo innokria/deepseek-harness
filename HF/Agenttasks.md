@@ -33,6 +33,12 @@ update /free-rahul-model-command  to add new logic for  bundled opencode2api gat
 
 ## Horses
 ```
+
+
+/root/r/run_melbourne.sh
+
+
+
 /data/dsh/ohamlab/addnewporject/horses_2025.json find the winner
 
 
