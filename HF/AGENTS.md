@@ -1,3 +1,14 @@
+
+## Workflow
+| Component | Your Melbourne house project |
+|---|---|
+| **LLM** | Understands listings, makes decisions, and explains recommendations |
+| **Harness** | Runs the agent, invokes tools, and manages execution |
+| **Agent** | Defines the Melbourne property task and overall workflow |
+| **Skills** | Explain how to discover, extract, store, and evaluate properties |
+| **Tools/scripts** | Perform actual searches, retrieve pages, update JSON, and execute analysis |
+| **Traces** | Record what happened so you can debug and improve the system |
+
 ## call the agent
 ```
 /ohamlab-agents  --task "write a phthon code for hello world" --agents 5
